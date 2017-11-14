@@ -1,0 +1,21 @@
+MODEL:
+! Compute sort order;
+SETS:
+ CITY/ LONDON, PARIS, NYC, LA, MOSCOW, TOKYO/:
+  LAT,    ! Its latitude;
+  RANK;   ! Its rank in distance from equator;
+ENDSETS
+
+DATA:
+ LAT = 51.3  48.5  40.4  34.0  55.5  35.4;
+ENDDATA
+
+! This is an N squared, rather than N log( N) sort;
+! Count number of cities of greater distance + 1;
+@FOR( CITY( I):
+ RANK( I) = 
+  @SUM( CITY( J)| LAT( J) #LT# LAT( I) #OR#
+   ( LAT( J) #EQ# LAT( I) #AND# J #LT# I): 1) + 1
+);
+
+END

@@ -1,0 +1,33 @@
+MODEL:
+! Traffic congestion transportation problem.
+  Cost/unit increases to infinity as traffic on link
+  approaches its link capacity.
+  Truncated variation of an AMPL example;
+ SETS:
+   ORIG/ CHIC CINC ERIE/: SUPPLY;
+   DEST / HAM AKR COL DAY/ : DEMAND;
+   OXD( ORIG, DEST): RATE, LIMIT, TRAF;
+ ENDSETS
+ DATA:
+   SUPPLY = 1200 800 1400;
+   DEMAND = 1000 1200 700 500;
+   RATE =   39   14   11   14
+            27    9   12    9
+            24   14   17   13;
+   LIMIT = 500 1000 1000 1000
+           500  800  800  800
+           800  600  600  600;
+ ENDDATA
+
+ [TOTCOST] MIN =
+   @SUM( OXD: RATE * TRAF/( 1 - TRAF/ LIMIT));
+
+ @FOR( ORIG( I):
+    @SUM( OXD( I, J): TRAF( I, J)) = SUPPLY( I));
+
+ @FOR( DEST( J):
+    @SUM( OXD( I, J): TRAF( I, J)) = DEMAND( J));
+
+ @FOR( OXD: @BND( 0, TRAF, LIMIT););
+
+END

@@ -1,0 +1,56 @@
+MODEL:
+! Model of a queue with arrivals in batches.  In 
+  this particular example, arrivals may show up in
+  batches of 1, 2, 3, or 4 units;
+
+SETS:
+! Look at enough states so that P( i) for large i
+  is effectively zero, where P( i) is the steady 
+  state probability of i customers in the system;
+   STATE/ 1..41/: P;
+
+! Potential batch sizes are 1, 2, 3 or 4 customers,
+  and A( i) = the probability that an arriving batch
+  contains i customers;
+   BSIZE/ 1..4/: A;
+ENDSETS
+
+DATA:
+   ! Batch size distribution;
+   A = .1, .2, .3, .4;
+   ! Number of batches arriving per day;
+   LMDA = 1.5;
+   ! Number of servers;
+   S    = 7;
+   ! Number of customers a server can
+     process per day;
+   MU   = 2;
+ENDDATA
+
+! LAST = number of STATES;
+   LAST = @SIZE( STATE);
+
+! Balance equations for states where the number of
+  customers in the system is less than or equal to
+  the number of servers;
+   @FOR( STATE( N)| N #LE# S:
+    P( N) * (( N - 1)* MU + LMDA) =
+     P( N + 1) * MU * N +
+      LMDA * @SUM( BSIZE( I)| I #LT# N: A( I)
+       * P( N - I))
+   );
+
+! Balance equations for states where number in
+  system is greater than the number of servers, but
+  less than the limit;
+   @FOR( STATE( N)| N #GT# S #AND# N #LT# LAST:
+    P( N) * ( S * MU + LMDA) =
+     P( N + 1) * MU * S +
+      LMDA * @SUM( BSIZE( I)| I #LT# N: A( I) * 
+       P( N - I))
+   );
+
+! Probabilities must sum to 1;
+   @SUM( STATE: P) = 1;
+
+END

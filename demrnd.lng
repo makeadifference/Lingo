@@ -1,0 +1,25 @@
+MODEL:
+! Generate a series of Normal and T distributed
+  random variables ;
+ SETS:
+  SERIES/1..15/: U, ZNORM, ZT;
+ ENDSETS
+
+! First uniform is arbitrary;
+  U( 1) = @RAND( .1234);
+
+! Generate the rest recursively;
+  @FOR( SERIES( I)| I #GT# 1:
+   U( I) = @RAND( U( I - 1))
+  );
+
+! Generate some...;
+  @FOR( SERIES( I):
+!   Normal deviates...;
+   @PSN( ZNORM( I)) = U( I);
+!   and t deviates(2 degrees of freedom);
+   @PTD( 2, ZT( I)) = U( I);
+ !   ZNORM and ZT may take on negative values;
+   @FREE( ZNORM( I)); @FREE( ZT( I));
+  );
+END

@@ -1,0 +1,40 @@
+MODEL:
+! Graphs @PSN() over a specified 
+  interval around 0;
+DATA:
+   ! height of graph;
+   H = 49;
+   ! width of graph;
+   W = 56;
+   ! interval around 0;
+   R = 2.4;
+ENDDATA
+SETS:
+  S1 /1..H/: X, FX;
+ENDSETS
+@FOR( S1( I):
+   ! X can be negative;
+   @FREE( X);
+   ! Compute x coordinate;
+   X( I) = -R +  ( I - 1)* 2 * R / ( H - 1);
+   ! Compute y coordinate = @psn( x);
+   FX( I) = @PSN( X( I));
+);
+DATA:
+  ! Print the header;
+  @TEXT() = @WRITE( 
+   'Graph of @PSN() on the interval [-',
+   R,',+',R,']:',@NEWLINE(1));
+  @TEXT() = @WRITE( '| 0 ',(W/2-5)*'-',
+   ' 0.5 ',(W/2-5)*'-', '1.0   X(i)',@NEWLINE(1));
+  ! Loop to print the graph over;
+  @TEXT() = @WRITEFOR( S1( I): '| ', 
+   ( W * FX( I) + 1/2) * '*',
+   @IF( X( I) #LT# 0, '', ' '), ( W - 
+   ( W * FX( I) + 1/2) + 3)*' ',
+   @FORMAT( X(I), '.1f'),@NEWLINE(1));
+  !Trailer;
+  @TEXT() = @WRITE( '| 0 ',(W/2-5)*'-',
+   ' 0.5 ',(W/2-5)*'-', '1.0',@NEWLINE(1));
+ENDDATA
+END

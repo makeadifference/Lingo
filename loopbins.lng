@@ -1,0 +1,45 @@
+MODEL:
+! Illustrates programming looping 
+  capabilities of LINGO by doing a
+  binary search;
+SETS:
+  S1: X;
+ENDSETS
+
+DATA:
+ ! The key for which we will search;
+  KEY = 16;
+ ! The list (must be in sorted 
+   increasing order);
+  X = 2 7 8 11 16 20 22 32;
+ENDDATA
+
+! Do a binary search for key;
+CALC:
+ ! Set begin and end points of search;
+  IB = 1;
+  IE = @SIZE( S1);
+ ! Loop to find key;
+  @WHILE( IB #LE# IE:
+   ! Cut bracket in half;
+    LOC = @FLOOR((IB + IE)/2);
+    @IFC( KEY #EQ# X(LOC):
+      @BREAK; ! Do no more loops;
+    @ELSE 
+      @IFC( KEY #LT# X( LOC):
+        IE = LOC-1;
+      @ELSE
+        IB = LOC+1;
+      );
+    );
+  );
+
+  @IFC( IB #LE# IE:
+   ! Display key's location;
+    @PAUSE( 'Key is at position: ', LOC);
+  @ELSE
+   ! Key not in list;
+    @STOP( ' Key not on list!!!');
+  );
+ENDCALC
+END

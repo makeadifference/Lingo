@@ -1,0 +1,77 @@
+MODEL:
+
+DATA:
+   INIT_PRICE = 100;      !initial underlying stock price;
+   STRIKE_PRICE = 99;     !option strike price;
+   RISK_FREE_RATE = .04;  !risk free rate for discounting;
+ENDDATA
+
+SETS:
+   PERIODS /P0..P5/: !six periods (1 initial and 5 recourse);
+      RETURN,        !return of underlying stock, a r.v.;
+      PRICE,         !current price of underlying stock;
+      SELL,          !fraction of option position sold;
+      PV,            !present value of option;
+      SAMP_SZ;       !sample size;
+ENDSETS
+
+! Core Model -------------------------------------------+;
+
+! Maximize the present value of the option in period 0;
+[R_OBJ] MAX = PV( @INDEX( P0));
+
+! Compute stock's price in each period;
+[R_PRICE_INIT] PRICE( 1) = INIT_PRICE;
+@FOR( PERIODS( P) | P #GT# @INDEX( P0):
+   [R_PRICE] PRICE( P) = PRICE( P - 1) * ( 1 + RETURN( P));
+);
+
+! Calculate the present value of the option in each period;
+@FOR( PERIODS( P) | P #LT# @SIZE( PERIODS):
+   [R_PV] PV( P) = SELL( P) * ( STRIKE_PRICE - PRICE( P)) + 
+    PV( P + 1) / ( 1 + RISK_FREE_RATE);
+);
+[R_PV_NPERIODS] PV( @SIZE( PERIODS)) = 
+ SELL( @SIZE( PERIODS)) * 
+  ( STRIKE_PRICE - PRICE( @SIZE( PERIODS)));
+
+! Can't sell more than we have;
+[R_SELL_EQ_1] @SUM( PERIODS( P): SELL( P)) <= 1;
+
+! Random variables not allowed in initial period;
+[R_RETURN_P0] RETURN( @INDEX( P0)) = 0;
+
+! SP Related Declarations -----------------------------+;
+
+! Returns are the random variables;
+@FOR( PERIODS( P) | P #GT# @INDEX( P0): 
+   @SPSTGRNDV( P - 1, RETURN( P));
+);
+
+! Sell(P0) is the init decision, 
+  Sell(P1..P5) are the recourse variables;
+@FOR( PERIODS( P): 
+   @SPSTGVAR( P - 1, SELL( P));
+);
+
+! Declare the outcome table distribution for returns;
+SETS:
+   OUTCOMES: O_RETURN; !An outcome set with a single;
+ENDSETS                ! attribute of stock's return;
+
+DATA:
+   SAMP_SZ = 0 4 4 2 2 2;        !sample size/period;
+   O_RETURN = .09 .03 -.01 -.08; !4 outcomes for return;
+ENDDATA
+
+! Declare outcome table distribution for return;
+@FOR( PERIODS( P) | P #GT# @INDEX( P0):
+   @SPDISTTABLE( O_RETURN, RETURN( P));
+);
+
+! Set the sample sizes for the stages;
+@FOR( PERIODS( P) | P #GT# @INDEX( P0):
+   @SPSAMPSIZE( P - 1, SAMP_SZ( P));
+);
+
+END

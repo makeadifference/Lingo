@@ -1,0 +1,236 @@
+MODEL:
+
+! Source: Chapter 1, Introduction to Stochastic Programming - 
+	John R. Birge & Francois Louveaux
+
+The Clear Lake Dam controls the water in Clear Lake, a well known resort in 
+Dreamland. The dam management is trying to decide how much water to release 
+in each of the next four months. The lake is currently 150 mm below the 
+flood stage. The lake is capable of lowering the water level by 200 mm each 
+month, but rainfall and evaporation affect the water level in the lake. The 
+rainfall and the evaporation depend on the weather near the lake. 
+
+The Management has divided the four months into two groups of two-months each.
+The weather conditions in each month of a group remain roughly the same. Also, 
+the weather in the months belonging to a specific group is independent of the 
+weather in the months belonging to the other group.
+
+The following are the scenarios for the weather in each of the months belonging
+to the first group.
+
+SCENARIO                            PROBABILITY
+50 mm decrease                      0.25
+100 mm increase                     0.5
+250 mm increase                     0.25
+
+The following are the scenarios for the weather in each of the months belonging 
+to the second group.
+
+SCENARIO                            PROBABILITY
+50 mm increase                      0.25
+150 mm increase                     0.5
+350 mm increase                     0.25
+
+If a flood occurs, then the damage is roughly equivalent to $10,000 per mm 
+above the flood level. In case, the water level falls too low, cost is incurred
+in importing water from outside. These costs are $5000 per mm less than 250 mm 
+below flood level.
+
+How much water should the management release so as to minimize the expected 
+value of the sum of the cost of flooding and the cost of importing water?
+ 
+;
+
+	! This problem can be treated as a five stage problem, with stage 0 
+	corresponding to the situation before the start of the first month, and 
+	stages 1, 2, 3 and 4 corresponding to months 1, 2, 3 and 4. 
+
+	In each stage, we start with an 'intitial' water level. This water level
+	changes during the course of the month (due to the weather) and we get to 
+	a 'final' or an end-of-stage water level. Then, we release some amount
+	of water and the resulting water level gives the 'initial' water level 
+	for the next stage.
+
+	Thus, the attribute 'waterLevelChange' is a random variable whereas the 
+	attribute 'waterReleased' is a recourse variable.;
+
+SETS:
+	STAGES 			: 	waterLevelInitial,
+			                	waterLevelChange,
+						waterLevelFinal,
+			                  waterReleased,
+
+						waterLevelDiffBelowMinLevel,
+						waterLevelDiffOverMaxLevel;
+
+	OUTCOMES_GP1		:	o_WaterLevel_1,
+						prob_WaterLevel_1;
+
+	OUTCOMES_GP2		:	o_WaterLevel_2,
+						prob_WaterLevel_2;
+
+
+ENDSETS
+
+DATA:
+	STAGES = Stage1    Stage2    Stage3    Stage4;
+
+	waterLevelAtStageZero = -150;	
+
+	waterLevelMax = 0;
+
+	waterLevelMin = -250;
+
+	penaltyPerMmForOverflow = 10000;
+
+	penaltyPerMmForShortfall = 5000;
+
+
+	OUTCOMES_GP1	= 1 2 3;
+
+	OUTCOMES_GP2	= 1 2 3;
+
+
+	o_WaterLevel_1 		= -50    	100		250;
+	
+	prob_WaterLevel_1 	= 0.25   	0.5		0.25;
+
+
+	o_WaterLevel_2 		= 50    	150		350;
+
+	prob_WaterLevel_2		= 0.25   	0.5		0.25;
+
+    	!waterLevelChange = -50 	-50	50	50;
+
+ENDDATA
+
+MIN = cost;
+
+	cost = @SUM(STAGES(s) : 
+
+			penaltyPerMmForShortfall *  waterLevelDiffBelowMinLevel(s)
+							+
+			penaltyPerMmForOverflow *  waterLevelDiffOverMaxLevel(s));
+
+
+	! The initial water level at the beginning of a state is equal to the 
+	water level at the end of the previous state minus the water released
+	in the previous state.;
+			
+		waterLevelInitial(1) 
+				= waterLevelAtStageZero - waterReleasedInStageZero;
+			
+	@FOR(STAGES(s) | s #GT# 1:
+					
+			waterLevelInitial(s) = waterLevelFinal(s -1) - waterReleased(s -1);
+
+		);
+
+	! The final water level at the end of a state is equal to the water 
+	level at the beginning of the state plus the water level change observed
+	in that state.;
+
+	@FOR(STAGES(s):
+					
+		waterLevelFinal(s) = 	waterLevelInitial(s) 
+							+ 
+						waterLevelChange(s);
+		);
+
+
+	! The variable 'waterLevelDiffOverMaxLevel', if positive, is the amount
+	by which the end-of-stage water level exceeds the 'max water level'.;
+
+	! The variable 'waterLevelDiffBelowMinLevel', if positive, is the amount
+	by which the end-of-stage water level falls below the 'min water level'.;
+
+	@FOR(STAGES(s):
+
+		waterLevelDiffOverMaxLevel(s) >= waterLevelFinal(s) - waterLevelMax;
+		
+		waterLevelDiffBelowMinLevel(s) >= waterLevelMin - waterLevelFinal(s);
+
+		);
+
+	! Cannot release more than 200 mm in a month;
+
+	@FOR(STAGES(s):
+
+		waterReleased(s) <= 200;
+		);
+
+
+	! The variables 'waterLevelInitial' and 'waterLevelFinal' are free variables.;
+
+	@FOR(STAGES(s): 
+			@FREE(waterLevelInitial(s));
+			@FREE(waterLevelFinal(s));
+		);
+	
+	!@SPSTGVAR( STAGE, VAR_REF, STAGE) declares variable VAR_REF to be a 
+      stochastic/recourse variable in stage STAGE.;
+
+	!Declare waterReleased to be a recourse variable at stages 0, 1, 2, 3 
+    	and 4;
+
+	@SPSTGVAR( 0, waterReleasedInStageZero);
+
+	@FOR(STAGES(s):
+      	@SPSTGVAR(s, waterReleased(s));
+            @SPSTGVAR(s, waterLevelFinal(s));
+		);
+
+    	!@SPSTGRNDV( STAGE, VAR_REF) declares variable VAR_REF to be a 
+      random variable in stage STAGE.;
+
+	!Declare waterLevelChange to be a random variable realized in stages 1, 
+    	2, 3 and 4;
+
+	@FOR(STAGES(s):
+      	@SPSTGRNDV(s, waterLevelChange(s));
+		);
+
+	!Declare distributions and their random variables;
+
+	@SPDISTTABLE( o_WaterLevel_1, waterLevelChange( 1), prob_WaterLevel_1);
+	@SPDISTTABLE( o_WaterLevel_1, waterLevelChange( 2), prob_WaterLevel_1);
+	@SPDISTTABLE( o_WaterLevel_2, waterLevelChange( 3), prob_WaterLevel_2);
+	@SPDISTTABLE( o_WaterLevel_2, waterLevelChange( 4), prob_WaterLevel_2);
+
+CALC:
+	@SET( 'TERSEO', 1); 
+
+   	@SOLVE();
+	
+	I = 1;
+
+	@WRITE('S.No.   Prob');
+      @FOR( STAGES( S):
+          @WRITE( 7*' ', 'Month ', @FORMAT( S, 'g'));
+      );
+      @WRITE( 10*' ', 'Cost');
+
+	@WRITE( @NEWLINE(1));
+
+	@WHILE( I #LE# @SPNUMSCENE():
+
+	      @SPLOADSCENE( I);
+
+		@WRITE( @FORMAT( I, '4g'));
+
+		@WRITE( @FORMAT( @SPPRBSCENE( I), '8.3f'));
+
+		@FOR( STAGES( S): 
+      		@WRITE( @FORMAT( WATERLEVELCHANGE( S), '14.2f'));
+		);
+
+		@WRITE( @FORMAT( COST, '14.0f'));
+
+		@WRITE( @NEWLINE( 1));
+
+		I = I + 1;
+	);
+
+ENDCALC
+
+END

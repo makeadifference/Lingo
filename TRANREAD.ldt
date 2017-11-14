@@ -1,0 +1,13 @@
+3 4  !4 warehouses, 3 customers;
+W1   !List of warehouse;
+W2  
+W3
+C1   !List of sustomers ;
+C2 
+C3 
+C4
+6  2  6  7
+4  9  5  3
+8  8  1  5 ~
+30 25 21 ~
+15 17 22 12

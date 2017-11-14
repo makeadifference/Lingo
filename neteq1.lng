@@ -1,0 +1,46 @@
+ MODEL:
+! Network equilibrium NETEQ1:
+  based on Hansen et. al., 
+  Math. Prog. vol. 52, no.1;
+ SETS:
+  NODE/A, B, C, D, E, F, G, H/:
+   P;      ! Pressure at this node;
+  ARC( NODE, NODE)/ B A, C A, C B, D C, E D,
+               F D, G D, F E, H E, G F, H F/ :
+   R,      ! Resistance on this arc;
+   FLO;    ! Flow on this arc;
+  SRC( NODE)/ G, H/:
+   PFIXED; ! Fixed pressure at source nodes;
+  DEST( NODE) | #NOT# @IN( SRC, &1):
+   DEMAND; ! Given demand at destination nodes;
+ ENDSETS
+ DATA:
+  PFIXED =  240, 240;
+  DEMAND =  1, 2, 4, 6, 8, 7;
+  R =  1, 25, 1, 3, 18, 45, 1, 12, 1, 30, 1;
+! For incompressible fluids and electricity:
+  PPAM = 1, for gases: PPAM = 2;
+  PPAM = 1;
+! For optimization networks: FPAM = 0 
+  ( for arcs withflow >= 0)
+  electrical networks:   FPAM = 1
+  other fluids:  1.8 <= FPAM <= 2;
+  FPAM = 1.852;
+ ENDDATA
+ CALC:
+! Set feasibility tolerance;
+  @SET( 'FNFTOL', .0001);
+ ENDCALC
+! Set the pressures for the source/reservoir nodes;
+  @FOR( SRC( I): P( I) = PFIXED( I));
+! Conservation of flow at non-source nodes;
+  @FOR( DEST( J):
+   @SUM( ARC( I, J): FLO( I, J)) = DEMAND( J) +
+    @SUM( ARC( J, K): FLO( J, K))
+ );
+! Relate pressures at 2 ends of each arc;
+ @FOR( ARC( I, J):
+  P( I)^ PPAM - P( J)^ PPAM = R( I, J) * 
+   FLO( I, J) ^ FPAM;
+ );
+END

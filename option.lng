@@ -1,0 +1,72 @@
+MODEL:
+! Computing the value of an option using the Black
+  Scholes formula (see "The Pricing of Options and
+  Corporate Liabilities", Journal of Political 
+  Economy, May-June, 1973);
+SETS:
+! We have 27 weeks of prices P( t), LOGP( t) is log
+  of prices;
+   WEEK/1..27/: P, LOGP;
+ENDSETS
+
+DATA:
+! Weekly prices of National Semiconductor;
+   P = 26.375, 27.125, 28.875, 29.625, 32.250,
+       35.000, 36.000, 38.625, 38.250, 40.250,
+       36.250, 41.500, 38.250, 41.125, 42.250,
+       41.500, 39.250, 37.500, 37.750, 42.000,
+       44.000, 49.750, 42.750, 42.000, 38.625,
+       41.000, 40.750;
+
+! The current share price;
+   S = 40.75;
+
+! Time until expiration of the option, expressed
+  in years;
+   T = .3644;
+
+! The exercise price at expiration;
+   K = 40;
+
+! The yearly interest rate;
+   I = .163;
+ENDDATA
+
+SETS:
+! We will have one less week of differences;
+   WEEK1( WEEK)| &1 #LT# @SIZE( WEEK): LDIF;
+ENDSETS
+
+! Take log of each week's price;
+   @FOR( WEEK: LOGP = @LOG( P));
+
+! and the differences in the logs;
+   @FOR( WEEK1( J): LDIF( J) = 
+    LOGP( J + 1) - LOGP( J));
+
+! Compute the mean of the differences;
+   MEAN = @SUM( WEEK1: LDIF)/ @SIZE( WEEK1);
+
+! and the variance;
+   WVAR = @SUM( WEEK1: ( LDIF - MEAN)^2)/
+    ( @SIZE( WEEK1) - 1);
+
+! Get the yearly variance and standard deviation;
+   YVAR = 52 * WVAR;
+   YSD = YVAR^.5;
+
+! Here is the Black-Scholes option pricing formula;
+   Z = (( I + YVAR/2) * 
+    T + @LOG( S/ K))/( YSD * T^.5);
+
+! where VALUE is the expected value of the option;
+   VALUE = S *@PSN( Z) - K *@EXP( - I * T) * 
+    @PSN( Z - YSD *T^.5);
+
+! LDIF may take on negative values;
+   @FOR( WEEK1: @FREE( LDIF));
+
+! The price quoted in the Wall Street Journal for 
+  this option when there were 133 days left was
+  $6.625;
+ END

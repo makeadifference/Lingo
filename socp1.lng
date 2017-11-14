@@ -1,0 +1,15 @@
+MODEL:
+
+!This is a second-order cone problem.  Lingo can exploit 
+this if you have both the barrier and global options.
+You will need to enable the 'Use Global Solver' options
+on the 'Global Solver' options tab, as well as 'Quadratic
+Recognition' option on the 'Nonlinear Solver' options tab;
+
+   min = z;
+   z^2 >= x^2 + 2*y^2;
+   3*x + y > 1;
+   @free( x);
+   @free( y);
+
+END

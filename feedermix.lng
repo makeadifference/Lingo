@@ -1,0 +1,41 @@
+MODEL:
+
+! Van de Panne and Popp presented a CCP formulation of feed mixer problem.
+  obj = 29.89 based on conic reformulation
+;
+
+! Cost of blend;
+[OBJ] Min = 24.55*x1 + 26.75*x2 + 39.00*x3 + 40.50*x4;
+
+! Fat constraint;
+[FAT] 2.3*x1 + 5.6*x2 + 11.1*x3 + 1.3*x4 > 5;
+
+! Protein constraint;
+[PROTEIN] ksi1*x1 + ksi2*x2 + ksi3*x3 + ksi4*x4 > 21;
+
+! Must produce full amount;
+[UNITY] x1 + x2 + x3 + x4 = 1;
+
+! We have one CCP constraint on protein 
+that must be satsified at least 95% of the time;
+@SPCHANCE( 'PROTEIN_SET', '>=', 0.95);
+! Assign the row to the set;
+@SPCHANCE( 'PROTEIN_SET', PROTEIN);
+
+! Protein content in each of the raw materials
+are the random variables...;
+@SPSTGRNDV( 1, ksi1);
+@SPSTGRNDV( 1, ksi2);
+@SPSTGRNDV( 1, ksi3);
+@SPSTGRNDV( 1, ksi4);
+
+!...each with a normal distribution;
+@SPDISTNORM( 12.0 , 0.53, ksi1);
+@SPDISTNORM( 11.9 , 0.44, ksi2);
+@SPDISTNORM( 41.8 , 4.50, ksi3);
+@SPDISTNORM( 52.1 , 0.79, ksi4);
+
+! The sample size;
+@SPSAMPSIZE( 1, 30);
+
+END

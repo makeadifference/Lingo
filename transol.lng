@@ -1,0 +1,140 @@
+MODEL:
+! A 3 Warehouse, 4 Customer Transportation Problem;
+
+! This model contains report writing statements
+that mimic the standard Lingo solution report;
+
+CALC:
+   ! We need to enable range analysis for this model;
+   @SET( 'DUALCO', 2);
+ENDCALC
+
+SETS:
+   WAREHOUSE / W1..W3/   : CAPACITY;
+   CUSTOMER   / C1..C4/ : DEMAND;
+   ROUTES( WAREHOUSE, CUSTOMER) : COST, VOLUME;
+ENDSETS
+
+! The objective;
+ [OBJ] min = @SUM( ROUTES: COST * VOLUME);
+
+! The demand constraints;
+ @FOR( CUSTOMER( J): [R_DEM]
+  @SUM( WAREHOUSE( I): VOLUME( I, J)) >=
+   DEMAND( J));
+
+! The supply constraints;
+ @FOR( WAREHOUSE( I): [R_SUP]
+  @SUM( CUSTOMER( J): VOLUME( I, J)) <=
+   CAPACITY( I));
+
+! Here are the parameters;
+DATA:
+   CAPACITY =   30, 25, 21 ;
+   DEMAND =   15, 17, 22, 12;
+   COST =      6,  2,  6,  7,
+               4,  9,  5,  3,
+               8,  8,  1,  5;
+ENDDATA
+DATA:
+   INFINITY = 1.E30;
+   LENF1S = 31;
+   LENF1R = 24;
+
+   ! Solution report.............................................;
+   @TEXT() = @WRITE( @NEWLINE( 1), 70*'v', @NEWLINE( 1));
+   @TEXT() = @WRITE( 3*' ',
+      @IF( @STATUS() #EQ# 0, 'Global optimal', '**** Non-global ***'),
+      ' solution found at iteration:', @FORMAT( @ITERS(), '14.14G'),
+      @NEWLINE( 1)
+   );
+   @TEXT() = @WRITE( 3*' ', 'Objective value:', @FORMAT( OBJ, '#41.7G'),
+      @NEWLINE( 2)
+   );
+   @TEXT() = @WRITE( 23*' ', 'Variable           Value        Reduced Cost',
+      @NEWLINE( 1)
+   );
+   @TEXT() = @WRITEFOR( WAREHOUSE( I): 
+    ( LENF1S - @STRLEN( @NAME( CAPACITY( I))))*' ', @NAME( CAPACITY( I)),
+    @FORMAT( CAPACITY( I), '#16.7G'),
+    @FORMAT( @DUAL( CAPACITY( I)), '#20.6G'), @NEWLINE( 1)
+   );
+   @TEXT() = @WRITEFOR( CUSTOMER( I):
+    ( LENF1S - @STRLEN( @NAME( DEMAND( I))))*' ', @NAME( DEMAND( I)),
+    @FORMAT( DEMAND( I), '#16.7G'), 
+    @FORMAT( @DUAL( DEMAND( I)), '#20.6G'), @NEWLINE( 1)
+   );
+   @TEXT() = @WRITEFOR( ROUTES( I, J):
+    ( LENF1S - @STRLEN( @NAME( COST( I, J))))*' ', @NAME( COST( I, J)),
+    @FORMAT( COST( I, J), '#16.7G'), 
+    @FORMAT( @DUAL( COST( I, J)), '#20.6G'), @NEWLINE( 1)
+   );
+   @TEXT() = @WRITEFOR( ROUTES( I, J):
+    ( LENF1S - @STRLEN( @NAME( VOLUME( I, J))))*' ', @NAME( VOLUME( I, J)),
+    @FORMAT( VOLUME( I, J), '#16.7G'),
+    @FORMAT( @DUAL( VOLUME( I, J)), '#20.7G'), @NEWLINE( 1)
+   );
+   @TEXT() = @WRITE( @NEWLINE( 1), 28*' ',
+    'Row    Slack or Surplus      Dual Price', @NEWLINE( 1)
+   );
+   @TEXT() = @WRITE(
+    28*' ','OBJ', 
+    @FORMAT( OBJ, '#16.7G'), 
+    @FORMAT( @DUAL( OBJ), '#20.7G'), @NEWLINE( 1)
+   );
+   @TEXT() = @WRITEFOR( CUSTOMER( I):
+    ( LENF1S - @STRLEN( @NAME( R_DEM( I))))*' ', @NAME( R_DEM( I)),
+    @FORMAT( R_DEM( I), '#16.7G'),
+    @FORMAT( @DUAL( R_DEM( I)), '#20.7G'), @NEWLINE( 1)
+   );
+   @TEXT() = @WRITEFOR( WAREHOUSE( I):
+    ( LENF1S - @STRLEN( @NAME( R_SUP( I))))*' ', @NAME( R_SUP( I)),
+    @FORMAT( R_SUP( I), '#16.7G'),
+    @FORMAT( @DUAL( R_SUP( I)), '#20.7G'), @NEWLINE( 1)
+   );
+
+   ! Range report.............................................;
+   @TEXT() = @WRITE( @NEWLINE( 1), 
+    ' Ranges in which the basis is unchanged:', @NEWLINE( 2)
+   );
+   @TEXT() = @WRITE( 38*' ', 'Objective Coefficient Ranges', @NEWLINE( 1));
+   @TEXT() = @WRITE( 34*' ', 'Current        Allowable        Allowable', @NEWLINE( 1));
+   @TEXT() = @WRITE( 16*' ', 'Variable      Coefficient         Increase         Decrease',
+    @NEWLINE( 1)
+   );
+   @TEXT() = @WRITEFOR( ROUTES( I, J): ( LENF1R - @STRLEN( @NAME( VOLUME( I, J))))*' ',
+    @NAME( VOLUME( I, J)),
+    @FORMAT( COST( I, J), '#17.7G'),
+    @IF( @RANGEU( VOLUME( I, J)) #LT# INFINITY,
+     @FORMAT( @RANGEU( VOLUME( I, J)), '#17.7G'),
+     '         INFINITY'),
+    @IF( @RANGED( VOLUME( I, J)) #LT# INFINITY,
+     @FORMAT( @RANGED( VOLUME( I, J)), '#17.7G'),
+     '         INFINITY'), @NEWLINE( 1)
+   );
+   @TEXT() = @WRITE( @NEWLINE( 1), 43*' ', 'Righthand Side Ranges', @NEWLINE( 1));
+   @TEXT() = @WRITE( 21*' ','Row          Current        Allowable        Allowable',
+    @NEWLINE( 1)
+   );
+   @TEXT() = @WRITE( 38*' ', 'RHS         Increase         Decrease', @NEWLINE( 1));
+   @TEXT() = @WRITEFOR( CUSTOMER( I): ( LENF1R - @STRLEN( @NAME( R_DEM( I))))*' ',
+    @NAME( R_DEM( I)),
+    @FORMAT( DEMAND( I), '#17.7G'),
+    @IF( @RANGEU( R_DEM( I)) #LT# INFINITY,
+     @FORMAT( @RANGEU( R_DEM( I)), '#17.7G'), 
+     '         INFINITY'
+    ),
+    @FORMAT( @RANGED( R_DEM( I)), '#17.7G'), @NEWLINE( 1)
+   );
+   @TEXT() = @WRITEFOR( WAREHOUSE( I): ( LENF1R - @STRLEN( @NAME( R_SUP( I))))*' ', 
+    @NAME( R_SUP( I)),
+    @FORMAT( CAPACITY( I), '#17.7G'),
+    @IF( @RANGEU( R_SUP( I)) #LT# INFINITY,
+     @FORMAT( @RANGEU( R_SUP( I)), '#17.7G'), 
+     '         INFINITY'
+    ),
+    @FORMAT( @RANGED( R_SUP( I)), '#17.7G'), @NEWLINE( 1)
+   );
+   @TEXT() = @WRITE( @NEWLINE( 1), 70*'^', @NEWLINE( 1));
+ENDDATA
+END

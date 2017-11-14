@@ -1,0 +1,12 @@
+MODEL:
+! Design a box at minimum cost that meets
+ area, volume, marketing and aesthetic requirements;
+ [COST] min = 2*( .05*(d*w + d*h) +.1*w*h);
+ [SURFACE]  2*(h*d + h*w + d*w) >= 888;
+ [VOLUME]   h*d*w >= 1512;
+! These two enforce aesthetics;
+ [NOTNARRO] h/w <= .718;
+ [NOTHIGH]  h/w >= .518;
+! Marketing requires a small footprint;
+ [FOOTPRNT] d*w <= 252;
+END

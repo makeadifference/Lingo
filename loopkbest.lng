@@ -1,0 +1,107 @@
+MODEL:
+
+! Illustrates how to append cuts in a loop to generate the K-Best 
+  solutions for a binary MILP;
+
+DATA:
+   ! Number of solutions to try and generate;
+   K = 5;
+ENDDATA
+
+SETS:
+   ITEMS: INCLUDE, WEIGHT, RATING;
+   MYFAVORITES( ITEMS);
+   KSOLUTIONS /1..K/: OBJ, RHS;
+ENDSETS
+
+DATA:
+   KNAPSACK_CAPACITY = 15;
+   ITEMS      WEIGHT  RATING =
+     BRATS       3      1
+     BROWNIES    3      1
+     BEER        3      1
+     ANT_REPEL   7      1
+     BLANKET     4      6
+     FRISBEE     1      6
+     SALAD       5     10
+     WATERMELON  7      9;
+   MYFAVORITES = BRATS BROWNIES BEER;
+ENDDATA
+
+SETS:
+   KXI( KSOLUTIONS, ITEMS): CUT, INCLUDE2;
+ENDSETS
+
+! The core knapsack model;
+SUBMODEL KNAPSACK:
+   [R_OBJ] MAX = @SUM( ITEMS( I): RATING( I) * INCLUDE( I));
+   @SUM( ITEMS( I): WEIGHT( I) * INCLUDE( I)) <= KNAPSACK_CAPACITY;
+   @FOR( ITEMS( I): @BIN( INCLUDE( I)));
+ENDSUBMODEL
+
+! The solution cutoff constraints;
+SUBMODEL KBESTCUTS:
+   @FOR( KSOLUTIONS( I2) | I2 #LE# I: 
+      [R_CUT] @SUM( ITEMS( J): CUT( I2, J) * INCLUDE( J)) >= RHS( I2)
+   );
+ENDSUBMODEL
+
+CALC:
+   !Set some parameters;
+   @SET( 'DEFAULT');
+   @SET( 'TERSEO', 2);
+
+   ! Loop to generate K-best solutions;
+   I = 0;
+   ISTATUS = 0;
+   @WHILE( I #LT# K #AND# ISTATUS #EQ# 0:
+
+    !@GEN( KNAPSACK, KBESTCUTS);
+
+     ! Solve current knapsack;
+     @SOLVE( KNAPSACK, KBESTCUTS);
+     ISTATUS = @STATUS();
+
+     ! Generate next cut to cutoff current solution; 
+     I = I + 1;
+     RHS( I) = 1;
+     @FOR( ITEMS( J):  
+        @IFC( INCLUDE( J) #LT# .1:
+           CUT( I, J) = 1;
+        @ELSE
+           CUT( I, J) = -1;
+           RHS( I) = RHS( I) - 1;
+        );
+     );
+	
+     ! Save current solution;
+     OBJ( I) = R_OBJ;
+     @FOR( ITEMS( J): INCLUDE2( I, J) = INCLUDE( J));
+
+   );
+
+   ! Write a report;
+   @WRITE( '     OBJECTIVE');
+   @FOR( ITEMS( J): @WRITE( @FORMAT( ITEMS( J), '14s')));
+   @WRITE( @NEWLINE( 1));
+
+   @FOR( KSOLUTIONS( I2) | I2 #LE# I:
+      @WRITE( @FORMAT( OBJ( I2), '14g'));
+      @FOR( ITEMS( J2): 
+         @IFC( INCLUDE2( I2, J2) #GT# .1: 
+            @WRITE( @FORMAT( INCLUDE2( I2, J2), '14g'));
+         @ELSE
+            @WRITE( 13*' ', '.');
+         );
+      );
+      @WRITE( @NEWLINE( 1));
+   );
+
+ENDCALC
+END
+
+  
+       
+   
+
+    

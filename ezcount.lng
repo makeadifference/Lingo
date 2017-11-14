@@ -1,0 +1,11 @@
+MODEL:
+! This model computes the number of ways of selecting
+  5 objects from a set of 52 objects;
+! This is expressed by 52! / (5! * 47!).  The actual
+  computation uses the log-gamma function;
+        WAYS = @EXP( @LGM( 53) - @LGM( 6) - @LGM( 48));
+! Note that the arguments of the @LGM functions are
+  one greater than the corresponding arguments of the
+  factorial functions, due to the definition of the
+  Gamma function;
+END

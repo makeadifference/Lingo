@@ -1,0 +1,24 @@
+MODEL:
+! A model of a home mortgage(WHATIF.LNG);
+! The user is prompted for values for the
+  payment, years, and interest rate.  The
+  face value of the mortgage (LUMP) is 
+  solved for.;
+ DATA:
+! User is prompted for these:;
+   PAYMENT  = ?; ! Monthly payment;
+   YEARS    = ?; ! No. of years;
+   YRATE    = ?; ! Interest rate;
+ ENDDATA
+
+! Relate no. of months to no. of years;
+   MONTHS = YEARS * 12;
+
+! Relate monthly interest rate to yearly rate;
+   ( 1 + MRATE) ^ 12  =  1 + YRATE;
+
+! Relate lump sum to monthly payment, monthly
+  interest rate, and no. of months;
+   LUMP = PAYMENT * @FPA( MRATE, MONTHS);
+
+END

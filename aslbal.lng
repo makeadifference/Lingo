@@ -1,0 +1,63 @@
+MODEL:
+ ! Assembly line balancing model;
+   ! This model involves assigning tasks to stations
+     in an assembly line so bottlenecks are avoided.
+     Ideally, each station would be assigned an 
+     equal amount of work.;
+ SETS:
+   ! The set of tasks to be assigned are A through K,
+     and each task has a time to complete, T;
+   TASK/ A B C D E F G H I J K/: T;
+
+   ! Some predecessor,successor pairings must be
+     observed(e.g. A must be done before B, B 
+     before C, etc.);
+   PRED( TASK, TASK)/ A,B  B,C  C,F  C,G  F,J  G,J
+     J,K  D,E  E,H  E,I  H,J  I,J /;
+
+   ! There are 4 workstations;
+   STATION/1..4/;
+
+   TXS( TASK, STATION): X;
+   ! X is the attribute from the derived set TXS 
+     that represents the assignment. X(I,K) = 1
+     if task I is assigned to station K;
+ ENDSETS
+
+ DATA:
+   ! Data taken from Chase and Aquilano, POM;
+   ! There is an estimated time required for each 
+     task:
+        A  B  C  D  E  F  G  H  I  J  K;
+   T = 45 11  9 50 15 12 12 12 12  8  9;
+ ENDDATA
+
+  ! The model;  
+  ! *Warning* may be slow for more than 15 tasks;
+
+  ! For each task, there must be one assigned 
+    station;
+  @FOR( TASK( I): @SUM( STATION( K): X( I, K)) = 1);
+
+  ! Precedence constraints;
+  ! For each precedence pair, the predecessor task
+    I cannot be assigned to a later station than its
+    successor task J;
+  @FOR( PRED( I, J):
+   @SUM( STATION( K): 
+    K * X( J, K) - K * X( I, K)) >= 0);
+
+  ! For each station, the total time for the 
+    assigned tasks must be less than the maximum
+    cycle time, CYCTIME;
+  @FOR( STATION( K):
+   @SUM( TXS( I, K): T( I) * X( I, K)) <= CYCTIME);
+
+  ! Minimize the maximum cycle time;
+  MIN = CYCTIME;
+
+  ! The X(I,J) assignment variables are 
+    binary integers;
+  @FOR( TXS: @BIN( X));
+
+END

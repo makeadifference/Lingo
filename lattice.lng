@@ -1,0 +1,52 @@
+MODEL:
+
+SETS:
+  PRIMITIVE;
+  VECTORS( PRIMITIVE, PRIMITIVE): X, Y;
+  LATTICE( PRIMITIVE, PRIMITIVE);
+ENDSETS
+
+DATA:
+  PRIMITIVE = 1..10;
+
+! Starting at 1,1, generate the lattice of points reachable
+  by the two integer vectors;
+  VECTORS = 1,3,
+            7,5;
+ENDDATA
+
+CALC:
+
+! Starting at 1,1, generate the lattice of points reachable
+  by the two integer vectors;
+  X1 = 1; Y1 = 3;
+  X2 = 7; Y2 = 5;
+
+  @INSERT( LATTICE, 1, 1); ! insert the seed;
+
+  @SET( 'TERSEO', 3); !minimal output;
+
+! Now generate all the points reachable, directly or
+  indirectly from the seed via the two vectors within 
+  a finite region;
+  @FOR( LATTICE( I, J) | I #LE# @SIZE( PRIMITIVE):
+    @FOR( VECTORS( I2, J2):
+      I3 = I + I2;
+      J3 = J + J2;
+      @IFC( #NOT# @IN( LATTICE, I3, J3):
+        @IFC( @IN( PRIMITIVE, I3) #AND# @IN( PRIMITIVE, J3):
+          @INSERT( LATTICE, I3, J3);
+	  );
+      );
+    );
+  );
+
+ENDCALC
+
+DATA:
+  !display the lattice set;
+  @TEXT() = @TABLE( LATTICE);
+ENDDATA
+
+END
+ 

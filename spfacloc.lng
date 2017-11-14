@@ -1,0 +1,140 @@
+MODEL:
+
+! 
+Given a set of potential facility locations, a set of customers who need to be 
+served and the (random) customer demands, the facility location problem seeks to 
+find a location where a new facility can be opened, so as to maximize the 
+revenues obtained from the customers served by that facility.
+
+The potential facility locations are given by:
+1) Atlanta
+2) St.Louis
+3) Cincinnati
+
+A fixed cost is incurred in opening a facility. Further, each facility has a 
+maximum capacity that is equal to the maximum number of units of product that
+the facility can produce.
+
+			Opening Cost		Max. capacity			
+Atlanta		90				59	
+St.Louis		64				65
+Cincinnati		80				65
+
+
+
+There customers are located at:
+1) Chicago
+2) San Antonio
+3) NYC 
+4) Miami
+
+
+The random customer demand is given by the following (discrete) distribution:
+
+Chicago	SanAnton	NYC		Miami		Probability
+12		11		19		16		0.2
+15		16		22		12		0.5
+17		17		21		10		0.3
+
+ 
+The revenues obtained by shipping one unit of product between a specific
+facility-customer combination is given by:
+
+		Chicago	SanAntonio	NYC		Miami
+Atlanta	5		6		5		6
+St.Louis	5		8		4		4
+Cincinnati	6		7		2		3
+ 
+Where should the new facility be opened so as to maximize the revenues obtained
+from the various customers?
+
+;
+
+SETS:
+
+	
+	FACILITIES /Atlanta  StLouis Cincinnati/:
+								openingCost,
+								maxCapacity,
+								isFacilityOpen;
+
+	CUSTOMERS /Chicago  SanAntonio  NYC  Miami/:
+								demand;
+
+	OUTCOMES	/ High   Medium 	Low/:
+								probOfOccurence;
+
+
+	FACILITIES_CUSTOMERS(FACILITIES, CUSTOMERS):	revenue,
+									noOfUnitsShipped;
+
+
+	CUSTOMERS_OUTCOMES(OUTCOMES, CUSTOMERS)	:	o_demand;
+
+	
+ENDSETS
+
+DATA:
+
+	openingCost = 90		64		80;
+
+	maxCapacity = 59		65		65;
+
+
+	revenue = 	5		6		5		6
+			5		8		4		4
+			6		7		2		3;
+	
+	o_demand = 	12		11		19		16
+			15		16		22		12
+			17 		17		21		10;
+
+	probOfOccurence =	0.2	0.5		0.3;
+
+	
+ENDDATA
+
+
+MAX = totalRevenue;
+
+	totalRevenue = (@SUM(FACILITIES_CUSTOMERS(f, c):
+					noOfUnitsShipped(f,c) * revenue(f, c)))
+
+				-	(@SUM(FACILITIES(f):
+						openingCost(f) * isFacilityOpen(f)));
+
+
+	@FOR (CUSTOMERS(c):
+			(@SUM(FACILITIES_CUSTOMERS(f, c) : noOfUnitsShipped)) <= demand(c);
+		);
+		
+
+	@FOR (FACILITIES(F):
+			(@SUM(FACILITIES_CUSTOMERS(f, c) : noOfUnitsShipped)) 
+								<= maxCapacity(f) * isFacilityOpen(f);
+
+			
+			@BIN(isfacilityOpen(f));
+
+		);
+
+
+	! The decision whether a facility is open is made at stage 0.
+	! The customer demands, which are random, are realized at stage 1.
+
+	! Declare 'isFacilityOpen' to be a recourse variable at stage 0;
+ 
+	@FOR(FACILITIES(f): 
+			@SPSTGVAR(0, isFacilityOpen(f));
+		);
+
+	! Declare 'demand' to be a random variable realized at stage 1;
+
+	@FOR(CUSTOMERS(c): 
+			@SPSTGRNDV(1, demand(c));
+		);
+
+	! Declare distributions for the demand random variables;
+
+	@SPDISTTABLE( o_demand, demand, probOfOccurence);
+END

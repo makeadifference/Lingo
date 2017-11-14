@@ -1,0 +1,66 @@
+MODEL:
+! Economic order quantity with quantity discounts;
+! This model determines the optimal order quantity
+  for a product that has quantity discounts;
+SETS:
+  ! Each order size range has;
+  RANGE/1..4/: 
+   B,   ! An upper breakpoint;
+   P,   ! A price/unit over this range;
+   H,   ! A holding cost/unit over this range;
+   EOQ, ! An EOQ using this ranges H and K;
+   Q,   ! An optimal order qty within this range;
+   AC;  ! Average cost/year using this range's Q;
+ENDSETS
+
+DATA:
+  D = 40000;  ! The yearly demand;
+  K = 90;     ! The fixed cost of an order;
+  IRATE = .2; ! Yearly interest rate;
+  !The upper break points, B, and price per unit, P:
+  Range:   1       2       3       4;
+  B =  10000,  20000,  40000,  60000;
+  P = .35225, .34525, .34175, .33825;
+ENDDATA
+
+  ! The model;
+  ! Calculate holding cost, H, and EOQ for each
+    range;
+   @FOR( RANGE:
+    H = IRATE * P;
+     EOQ = ( 2 * K * D/ H) ^.5;
+   );
+
+  ! For the first range, the optimal order quantity
+    is equal to the EOQ ...;
+   Q( 1) = EOQ( 1)
+  ! but, if the EOQ is over the first breakpoint,
+    lower it;
+     - ( EOQ( 1) - B( 1) + 1) * 
+     ( EOQ( 1) #GE# B( 1));
+
+   @FOR( RANGE( J)| J #GT# 1:
+  ! Similarly, for the rest of the ranges, Q = EOQ;
+    Q( J) = EOQ( J) +
+  ! but, if EOQ is below the lower breakpoint, 
+    raise it up;
+     ( B( J-1) - EOQ( J)) * 
+      ( EOQ( J) #LT# B( J - 1))
+  ! or if EOQ is above the upper breakpoint, 
+    lower it down;
+       - ( EOQ( J) - B( J) + 1) * 
+        ( EOQ( J) #GE# B( J));
+   );
+
+  ! Calculate average cost per year, AC, 
+    for each stage;
+   @FOR( RANGE: AC = P * D + H * Q/ 2 + K * D/ Q);
+
+  ! Find the lowest average cost, ACMIN.;
+   ACMIN = @MIN( RANGE: AC);
+
+  ! Select the Q that gives the lowest AC per year;
+  ! Note: TRUE = 1, FALSE = 0;
+   QUSE = @SUM( RANGE: Q * ( AC #EQ# ACMIN));
+
+END

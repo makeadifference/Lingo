@@ -1,0 +1,104 @@
+ MODEL:
+! The sudoku puzzle in LINGO. Also spelled soduku someplaces.
+ Fill out a 9x9 grid with the digits
+ 1,2,...9, so that each digit appears once in
+   a) each column,
+   b) each row,
+   c) each of the nine 3x3 subsquares,
+   d) the main diagonal,
+   e) in the reflected diagonal;
+! Some versions of the puzzle do not require (d) and (e)
+! Keywords: sudoku, soduku, Puzzles;
+SETS:
+ DIM;
+ DD( DIM, DIM): X;
+ DDD( DIM,DIM,DIM): Y;
+ENDSETS
+
+ DATA:
+  DIM = 1..9;
+! Set diag = 1 if you want the diagonal constraints to be
+  satisfied, else 0 if not required;
+  DIAG = 0;
+ ENDDATA
+! Variables:
+   X(i,j) = value in row i, col j of matrix,
+   Y(i,j,k) = 1 if X(i,j) = k;
+
+! Insert any pre-specified entries here;
+   X(1,1) = 5;
+   X(2,6) = 8;
+   X(3,4) = 5;
+   X(3,9) = 1;
+   X(4,2) = 1;
+   X(4,7) = 6;
+   X(4,8) = 3;
+   X(9,1) = 9;
+   X(9,2) = 8;
+   X(9,5) = 6;
+
+ ! Link X and Y;
+   @FOR( dd(i,j):
+     X(i,j) = @SUM(dim(k): k*y(i,j,k));
+ ! Must choose something for cell i,j;
+    @SUM(dim(k): y(i,j,k)) = 1;
+ ! Make the Y's binary;
+    @FOR(dim(k): @BIN(y(i,j,k)));
+       );
+
+ ! Force each number k to appear once in each column j;
+   @FOR( dim(j):
+     @FOR( dim(k):
+       @SUM( dim(i): Y(i,j,k)) = 1;
+       );  );
+ ! Force each number k to appear once in each row i;
+   @FOR( dim(i):
+     @FOR( dim(k):
+       @SUM( dim(j): Y(i,j,k)) = 1;
+        ); );
+ ! Force each number k to appear once in each 3x3 subsquare; 
+   @FOR( dim(k):
+     ! Upper left;
+     @SUM( dd(i,j) | i #le#3 #and# j #le# 3: y(i,j,k)) = 1;
+     ! Upper middle;
+     @SUM( dd(i,j) | i #le#3 #and# j #gt# 3 #and# j#le# 6: y(i,j,k)) = 1;
+     ! Upper right;
+     @SUM( dd(i,j) | i #le#3 #and# j #gt# 6: y(i,j,k)) = 1;
+     ! Middle left;
+     @SUM( dd(i,j) | i #gt#3 #and# i #le#6 #and# j #le# 3: y(i,j,k)) = 1;
+     ! Middle middle;
+     @SUM( dd(i,j) | i #gt#3 #and# i #le#6 #and# 
+      j #gt# 3 #and# j #le# 6: y(i,j,k)) = 1;
+     ! Middle right;
+     @SUM( dd(i,j) | i #gt#3 #and# i #le#6 #and# 
+      j #gt# 6 #and# j #le# 9: y(i,j,k)) = 1;
+     ! Lower left;
+     @SUM( dd(i,j) | i #gt#6 #and# i #le#9 #and# 
+      j #gt# 0 #and# j #le# 3: y(i,j,k)) = 1;
+     ! Lower middle;
+     @SUM( dd(i,j) | i #gt#6 #and# i #le#9 #and# 
+      j #gt# 3 #and# j #le# 6: y(i,j,k)) = 1;
+     ! Lower right;
+     @SUM( dd(i,j) | i #gt#6 #and# i #le#9 #and# 
+      j #gt# 6 #and# j #le# 9: y(i,j,k)) = 1;
+
+   ! Force each number k to appear once in the main diagonal; 
+     @SUM( dd(i,j) | i #eq# j: diag*y(i,j,k)) = diag;
+   ! Force each number k to appear once in the reflected diagonal;
+     @SUM( dd(i,j) | i + j #eq# 10: diag*y(i,j,k)) = diag;
+
+       );
+
+  CALC:
+    @SET( 'TERSEO', 1);
+    @SOLVE();
+ ! Write the solution in matrix form;
+    @WRITE( @NEWLINE( 1), 25*' ', 'Sudoku Puzzle Solution', @NEWLINE( 1));
+    @FOR( DIM( i): 
+       @FOR( DIM( j): 
+          @WRITE( @FORMAT( '8g', x( i, j)));
+       );
+       @WRITE( @NEWLINE( 1));
+    );
+  ENDCALC
+END

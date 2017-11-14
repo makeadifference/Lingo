@@ -1,0 +1,12 @@
+MODEL:
+! Arrival rate of customers/ hour;
+   AR = 25;
+! Service time per customer in minutes;
+   STM = 6;
+! Service time per customer in hours;
+   STH = STM/ 60;
+! Fraction customers finding all servers busy;
+   FB = .05;
+! The PEL function finds number of servers needed, NS;
+   FB = @PEL( AR * STH, NS);
+END

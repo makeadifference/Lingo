@@ -1,0 +1,40 @@
+MODEL:
+SETS:
+   TASKS / DESIGN, FORECAST, SURVEY, PRICE,
+    SCHEDULE, COSTOUT, TRAIN/: TIME, ES, LS, SLACK;
+
+   PRED( TASKS, TASKS) / 
+    DESIGN,FORECAST,
+    DESIGN,SURVEY,
+    FORECAST,PRICE,
+    FORECAST,SCHEDULE,
+    SURVEY,PRICE,
+    SCHEDULE,COSTOUT,
+    PRICE,TRAIN,
+    COSTOUT,TRAIN /;
+ENDSETS
+
+DATA: 
+   TIME = 10, 14, 3, 3, 7, 4, 10;
+ENDDATA
+
+@FOR( TASKS( J)| J #GT# 1:
+ ES( J) = @MAX( PRED( I, J): ES( I) + TIME( I))
+);
+
+@FOR( TASKS( I)| I #LT# LTASK:
+ LS( I) = @MIN( PRED( I, J): LS( J) - TIME( I));
+);
+
+@FOR( TASKS( I): SLACK( I) = LS( I) - ES( I));
+
+ES( 1) = 0;
+LTASK = @SIZE( TASKS);
+LS( LTASK) = ES( LTASK);
+
+DATA:
+!Use @TABLE() to display the precedence relations set, PRED;
+   @TEXT() = @TABLE( PRED);
+ENDDATA
+
+END

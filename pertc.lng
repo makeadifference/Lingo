@@ -1,0 +1,58 @@
+MODEL:
+  ! A PERT/CPM model with crashing;
+  !
+  ! The precedence diagram is:
+  !       /FCAST\---SCHED----COSTOUT\
+  !      /       \                   \
+  ! FIRST         \                   \
+  !      \         \                   \
+  !       \SURVEY-PRICE-----------FINAL;
+
+SETS:
+  TASK/ FIRST, FCAST, SURVEY, PRICE,
+        SCHED, COSTOUT, FINAL/:
+              TIME,  ! Normal time for task;
+              TMIN,  ! Min time at max crash;
+              CCOST, ! Crash cost/unit time;
+                 EF, ! Earliest finish;
+              CRASH; ! Amount of crashing;
+
+ ! Here are the precedence relations;
+  PRED( TASK, TASK)/  FIRST,FCAST   FIRST,SURVEY,
+   FCAST,PRICE   FCAST,SCHED   SURVEY,PRICE,
+   SCHED,COSTOUT   PRICE,FINAL   COSTOUT,FINAL/;
+ ENDSETS
+
+DATA:
+  TIME = 0 14 3 3 7 4 10; ! Normal times;
+  TMIN = 0  8 2 1 6 3  8; ! Crash times;
+  CCOST = 0 4 1 2 4 5  3; ! Cost/unit to crash;
+  DUEDATE = 31;           ! Project due date;
+ENDDATA
+
+! The crashing LP model;
+! Define earliest finish, each predecessor of a task
+  constrains when the earliest time the task can be
+  completed. The earliest the preceding task can be
+  finished plus the time required for the task minus
+  any time that could be reduced by crashing this
+  task.;
+  @FOR( PRED( I, J):
+    EF( J) >= EF( I) + TIME( J) - CRASH( J)
+  );
+
+! For each task, the most it can be crashed is the
+  regular time of that task minus minimum time for
+  that task;
+  @FOR( TASK( J):
+    CRASH( J) <= TIME( J) - TMIN( J)
+  );
+
+! Meet the due date;
+! This assumes that there is a single last task;
+  EF( @SIZE( TASK)) <= DUEDATE;
+
+! Minimize the sum of crash costs;
+  MIN = @SUM( TASK: CCOST * CRASH);
+
+END

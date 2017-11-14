@@ -1,0 +1,43 @@
+MODEL:
+! A 3 Warehouse, 4 Customer 
+   Transportation Problem;
+! Illustrates use of the file reading functions:
+   @READLN and @READRM;
+SETS:
+   WAREHOUSE    : CAPACITY;
+   CUSTOMER     : DEMAND;
+   ROUTES( WAREHOUSE, CUSTOMER) : COST, VOLUME;
+ENDSETS
+
+CALC:
+   !Read 1 line with number of warehouses 
+     and number of customers;
+   NW, NC = @READLN( 'TRANREAD.ldt', 1);
+   ! Read NW lines of warehouses;
+   WAREHOUSE = @READLN( , NW);
+   ! Read NC lines of customers;
+   CUSTOMER = @READLN( , NC);
+   ! Read cost data up to record 
+      marker: '~';
+   COST = @READRM( , '~');
+   ! Read capacities up to 
+      record marker;
+   CAPACITY = @READRM( , '~');
+   ! Read demand data up to end-of-file;
+   DEMAND   = @READRM();
+ENDCALC
+
+! The objective;
+ [OBJ] MIN = @SUM( ROUTES: COST * VOLUME);
+
+! The demand constraints;
+ @FOR( CUSTOMER( J): [DEM]
+  @SUM( WAREHOUSE( I): VOLUME( I, J)) >= 
+   DEMAND( J));
+
+! The supply constraints;
+ @FOR( WAREHOUSE( I): [SUP]
+  @SUM( CUSTOMER( J): VOLUME( I, J)) <= 
+   CAPACITY( I));
+
+END

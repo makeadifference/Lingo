@@ -1,0 +1,46 @@
+MODEL:
+! Downside risk portfolio model;
+ SETS:
+    ASSET/ ATT GMC USX/ :
+        INVEST;  ! Amount to invest in each asset;
+    SCENARIO/1..7/:
+        TRETRN,  ! Return under this scenario;
+        DRISK;   ! Downside risk under this scenario;
+    TABLE( SCENARIO, ASSET):
+        ARETRN;  ! Return under scenario I of asset J;
+ ENDSETS
+ DATA:
+! Desired return;
+    DRETURN = .13;
+! Threshold, below which we are unhappy;
+    THRESH = .11;
+! Power to use for risk(1 or 2);
+!  When NPOW = 1, it is a linear program;
+!  When NPOW = 2 and threshold = desired return;
+!   it is the semi-variance;
+    NPOW = 2;
+    ARETRN =
+    -.071  .144  .169
+     .056  .107 -.035
+     .038  .321  .133
+     .089  .305  .732
+     .090  .195  .021
+     .083  .390  .131
+     .035 -.072  .006;
+ ENDDATA
+! Minimize average downside risk;
+    MIN =  @SUM( SCENARIO: DRISK ^ NPOW)/ 7;
+! Compute return for each scenario;
+    @FOR( SCENARIO( I):
+     TRETRN( I) = @SUM( ASSET( J):
+      ARETRN( I, J) * INVEST( J));
+! .. and how much we fall short of threshold ;
+     DRISK( I) >= THRESH - TRETRN( I);
+! Return in a period could be negative;
+     @FREE( TRETRN( I));
+    );
+! Our budget constraint(divided by a billion);
+   [BUDGET] @SUM( ASSET: INVEST ) = 1;
+! Our desired return;
+   [PRICER] @SUM( SCENARIO( I): TRETRN( I))/ 7 >= DRETURN;
+END

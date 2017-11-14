@@ -1,0 +1,36 @@
+MODEL:
+! Newsboy inventory model;
+! This model calculates the optimal stock levels
+  for a product with normally distributed demand
+  and a fixed ordering cost;
+DATA:
+ P = 11;     ! Penalty/unit for not having enough;
+ H = 5;      ! Cost/unit for excess;
+ MU = 144;   ! Mean demand;
+ SIGMA = 25; ! Standard deviation in demand;
+ K = 15;     ! Fixed cost of placing an order;
+ENDDATA
+
+! Compute reorder point, SLIL, and order up to 
+  point, SBIG;
+
+! Calculate the order up to point, SBIG, using
+  standard newsboy formula;
+ @PSN( ZBIG ) = P /( P + H);
+ ZBIG = ( SBIG - MU)/ SIGMA;
+
+! and the expected cost of being there, CSBIG;
+ CSBIG = SIGMA * @PSL( ZBIG) * ( P + H) + H * 
+  ( SBIG - MU);
+
+! The expected cost at the reorder point should
+  differ from the expected cost at SBIG by the
+  fixed order cost, K;
+ CSLIL = K + CSBIG;
+
+! Solve for SLIL;
+ CSLIL = SIGMA * @PSL( ZLIL) * ( P + H) * H *
+  ( ZLIL * SIGMA);
+ ZLIL = ( SLIL - MU)/ SIGMA;
+
+END

@@ -1,0 +1,36 @@
+MODEL:
+
+! A 3 Warehouse, 4 Customer Transportation Problem
+  that uses the semi-continuous (@SEMIC) to restrict
+  nonzero shipments to be between 3 and 10 units.;
+
+SETS:
+   WAREHOUSE: CAPACITY;
+   CUSTOMER: DEMAND;
+   ROUTES( WAREHOUSE, CUSTOMER) : COST, VOLUME;
+ENDSETS
+
+DATA:
+   WAREHOUSE,CAPACITY =  WH1,30 WH2,25 WH3,21;
+   CUSTOMER,DEMAND =   C1,15 C2,17 C3,22 C4,12;
+   COST =  6  2  6  7
+           4  9  5  3
+           8  8  1  5;
+ENDDATA
+
+! The objective;
+ [R_OBJ] MIN = @SUM( ROUTES: COST * VOLUME);
+
+! The demand constraints;
+ @FOR( CUSTOMER( J): [R_DEM]
+  @SUM( WAREHOUSE( I): VOLUME( I, J)) >= 
+   DEMAND( J));
+
+! The supply constraints;
+ @FOR( WAREHOUSE( I): [R_SUP]
+  @SUM( CUSTOMER( J): VOLUME( I, J)) <= 
+   CAPACITY( I));
+
+ @FOR( ROUTES: @SEMIC( 3, VOLUME, 10));
+
+END

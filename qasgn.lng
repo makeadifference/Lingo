@@ -1,0 +1,58 @@
+MODEL:
+
+! A quadratic assignment problem:
+  Given transfers between flights and distance 
+  between gates, assign flights to gates to minimize
+  total transfer distance;
+
+ SETS:
+   FLIGHT/1..3/;   !  There are three flights;
+   GATE/1..4/;     !  There are five gates;
+   FXG( FLIGHT, GATE):   X; !Flight-gate assignment;
+   GXG( GATE, GATE):     T; !Distance between gates;
+   FXF( FLIGHT, FLIGHT): N; !Transfers btwn flights;
+ ENDSETS
+
+ DATA:
+   N = 0 30  5      ! No. transfers between flights;
+      20  0  0
+      30 40  0 ;
+
+   T = 0  5 10 14   ! distance between gates;
+       5  0  5 10
+      10  4  0  6
+      15 10  5  0 ;
+ ENDDATA
+
+ SETS:
+   ! Transfer between 2 flights must be required
+     and related to 2 different gates. Warning:
+     this set gets big fast.;
+   TGTG( FLIGHT, GATE, FLIGHT, GATE)| 
+    &1 #LT# &3 #AND# (( N( &1, &3) #NE# 0) #AND#
+     ( T( &2, &4) #NE# 0) #OR# ( N( &3, &1) #NE# 0)
+      #AND# ( T( &4, &2) #NE# 0)): Y;
+ ENDSETS
+
+   ! Each flight, B, must be assigned to a gate;
+   @FOR( FLIGHT( B):
+    @SUM( GATE( J): X( B, J)) = 1);
+
+   ! Each gate, J, can receive at most one flight;
+   @FOR( GATE( J):
+    @SUM( FLIGHT( B): X( B, J)) <= 1);
+
+   ! Force Y(B,J,C,K)=1 if B assigned to J and C
+     assigned to K;   
+   ! Assumes the T and N matrices are nonnegative;
+   @FOR( TGTG( B, J, C, K):
+    Y( B, J, C, K) >= X( B, J) + X( C, K) - 1);
+
+   ! Min the sum of transfers * distance;
+   MIN = @SUM( TGTG( B, J, C, K): Y( B, J, C, K) *
+    ( N( B, C) * T( J, K) + N( C, B) * T( K, J)));
+
+   ! Make the X's 0/1 (Y's will naturally be 0/1);
+   @FOR( FXG: @BIN( X));
+
+END

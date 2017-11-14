@@ -1,0 +1,42 @@
+model:
+
+! Generates 40,000 random numbers, ranks them
+  with @RANK(), and then moves them into sorted 
+  order.;
+
+sets:
+  s1 /1..400000/: xrand, xrank, xsort;
+endsets
+
+calc:
+   @set( 'terseo', 2);
+
+   seed = .5;
+
+   t0 = @time();
+
+   @for( s1( i): 
+      xrand( i) = @rand( seed);
+      seed = xrand( i);
+   );
+
+   t1 = @time();
+
+   xrank = @rank( xrand);
+
+   t2 = @time();
+
+   @for( s1( i):
+      xsort( xrank( i)) = xrand( i);
+   );
+
+   t3 = @time();
+
+   @write(
+      '  Time to generate: ', @format( t1 - t0, '8.2g'), @newline( 1),
+      '  Time to rank:     ', @format( t2 - t1, '8.2g'), @newline( 1),
+      '  Time to move:     ', @format( t3 - t2, '8.2g'), @newline( 2)
+   );
+endcalc
+
+end

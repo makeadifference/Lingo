@@ -1,0 +1,71 @@
+MODEL:
+
+! Conjoint analysis model to decide how much weight
+  to give to the two product attributes of warranty
+  length and price;
+
+SETS:
+! The three possible warranty lengths;
+     WARRANTY /LONG, MEDIUM, SHORT/ : WWT;
+! where WWT( i) = utility assigned to warranty i;
+
+! The three possible price levels (high, 
+  medium, low);
+     PRICE /HIGH, MEDIUM, LOW/ : PWT;
+! where PWT( j) = utility assigned to price j;
+
+! We have a customer preference ranking for each
+  combination;
+     WP( WARRANTY, PRICE) : RANK;
+ENDSETS
+
+DATA:
+! Here is the customer preference rankings running
+  from a least preferred score of 1 to the most
+  preferred of 9.  Note that long warranty and low
+  price are most preferred with a score of 9, 
+  while short warranty and high price are least 
+  preferred with a score of 1;
+
+     RANK = 7  8  9
+            3  4  6
+            1  2  5;
+ENDDATA
+
+SETS:
+! The next set generates all unique pairs of product
+  configurations such that the second configuration
+  is preferred to the first;
+     WPWP( WP, WP) | RANK( &1, &2) #LT# 
+      RANK( &3, &4): ERROR;
+! The attribute ERROR computes the error of our 
+  estimated preference from the preferences given us
+  by the customer;
+ENDSETS
+
+! For every pair of rankings, compute the amount by
+  which our computed ranking violates the true 
+  ranking. Our computed ranking for the (i,j) 
+  combination is given by the sum WWT( i) + PWT( j).
+  (NOTE: This makes the bold assumption that 
+  utilities are additive!);
+     @FOR( WPWP( i, j, k, l): ERROR( i, j, k, l) >=
+      1 + ( WWT( i) + PWT( j)) - 
+       ( WWT( k) + PWT( l))
+     );
+! The 1 is required on the righthand-side of the 
+  above equation to force ERROR to be nonzero in the
+  case where our weighting scheme incorrectly 
+  predicts that the combination (i,j) is equally
+  preferred to the (k,l) combination.
+
+  Since variables in LINGO have a default lower 
+  bound of 0, ERROR will be driven to zero when we
+  correctly predict that (k,l) is preferred to 
+  (i,j).
+
+  Next, we minimize the sum of all errors in order 
+  to make our computed utilities as accurate as
+  possible;
+     MIN = @SUM( WPWP: ERROR);
+END

@@ -1,0 +1,21 @@
+MODEL:
+! Model of a queuing system with N servers, each of
+  which costs $17/hour. Arrivals occur at a rate of 
+  70 per hour in a Poisson stream. Arrivals finding
+  all servers busy are lost. A lost customer costs 
+  $35. The average time to process a customer is 5 
+  minutes;
+
+! Minimize total cost = 
+  service costs + lost customer cost;
+    [COST]  MIN = SCOST + LCOST ;
+
+! Cost of servers;
+    SCOST = 17 * N ;
+
+! Cost of lost customers;
+    LCOST = 35 * 70 * FLOST ;
+
+! The fraction of customers lost;
+    FLOST = @PEL( 70 * 5 / 60 , N);
+END

@@ -1,0 +1,16 @@
+MODEL:
+SETS:
+  SONG/1..7/: LENGTH, Y;
+ENDSETS
+  ! Maximize number of songs on short side;
+   MAX = @SUM( SONG: Y);
+  ! It must contain at most half the music;
+   @SUM( SONG: LENGTH * Y) <= HALF;
+  ! Compute half the length;
+   HALF = @SUM( SONG: LENGTH)/ 2;
+  ! We want the Y's to be 0/1;
+   @FOR( SONG: @BIN( Y));
+ DATA:
+   LENGTH = 7, 5, 2, 2, 2, 2, 2;
+ ENDDATA
+END

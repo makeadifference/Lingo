@@ -1,0 +1,7 @@
+MODEL:
+MIN = COST;
+COST = XCOST + YCOST;
+XCOST = @IF( X #GT# 0, 100, 0) + 2 * X;
+YCOST = @IF( Y #GT# 0,  60, 0) + 3 * Y;
+X + Y >= 30;
+END

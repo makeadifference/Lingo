@@ -1,0 +1,119 @@
+MODEL:
+  ! The Mexican Steel problem;
+ SETS:
+   ! Steel plants;
+  PLANT /AHMSA FUNDIDA SICARTSA HYLSA HYLSAP/:
+   RD2, MUE;
+   ! Markets;
+  MARKET / MEXICO MONTE GUADA /: DD, RD3, MUV;
+   ! Final products;
+  CF /STEEL/: PV, PE, EB;
+   ! Intermediate products;
+  CI / SPONGE PIGIRON/;
+   ! Raw materials;
+  CR /PELLETS COKE NATGAS ELECTRIC SCRAP/ : PD;
+   ! Processes;
+  PR /PIGIRON1 SPONGE1 STEELOH STEELEL STEELBOF/;
+   ! Productive units;
+  UNIT / BLASTFUR OPENHEAR BOF DIRECT ELECARC/;
+   ! ;
+  CRXP( CR, PR) : A1; CIXP( CI, PR) : A2;
+  CFXP( CF, PR) : A3; UXP( UNIT, PR) : B;
+  UXI( UNIT, PLANT) : K; 
+  PXM( PLANT, MARKET) : RD1, MUF;
+  PXI( PR, PLANT) : Z; 
+  CFXPXM( CF, PLANT, MARKET) : X;
+  CRXI( CR, PLANT) : U; CFXI( CF, PLANT) : E;
+  CFXM( CF, MARKET) : D, V;
+ ENDSETS
+  ! Demand equations;
+   @FOR( CFXM( C, J):
+    D( C, J) = 5.209 * ( 1 + 40/ 100) * DD( J)/100);
+  ! Transport rate  equations;
+   @FOR( PXM( I, J)| RD1( I, J) #GT# 0:
+    MUF( I, J) =  2.48 + .0084 * RD1( I, J));
+   @FOR( PXM( I, J)| RD1( I, J) #LE# 0: 
+    MUF( I, J) = 0);
+
+   @FOR( PLANT( I)| RD2( I) #GT# 0:
+    MUE( I) = 2.48 + .0084 * RD2( I));
+   @FOR( PLANT( I)| RD2( I) #LE# 0: MUE( I) = 0);
+   @FOR( MARKET( J)| RD3( J) #GT# 0:
+    MUV( J) = 2.48 + .0084 * RD3( J));
+   @FOR( MARKET( J)| RD3( J) #LE# 0: MUV( J) = 0);
+  ! For each plant I1;
+   @FOR( PLANT( I1):
+    ! Sources >= uses, final products;
+     @FOR( CF( CF1): [MBF]
+      @SUM( PR( P1): A3( CF1, P1) * Z( P1, I1)) >=
+       @SUM( MARKET( J1): X( CF1, I1, J1)) + 
+        E( CF1, I1));
+    ! Intermediate products;
+     @FOR( CI( CI1): [MBI]
+      @SUM( PR( P1): A2( CI1, P1) * 
+       Z( P1, I1)) >= 0);
+    ! Raw materials;
+     @FOR( CR( CR1): [MBR]
+      @SUM( PR( P1): A1( CR1, P1) * 
+       Z( P1, I1)) + U( CR1, I1) >= 0);
+    ! Capacity of each productive unit M1;
+     @FOR( UNIT( M1): [CC]
+      @SUM( PR( P1): B( M1, P1) * Z( P1, I1)) <=
+       K( M1, I1));
+   );
+  ! For each final product CF1;
+   @FOR( CF( CF1):
+    ! Demand requirements for each market J1;
+     @FOR( MARKET( J1): [MR]
+      @SUM( PLANT(I1): X( CF1, I1, J1)) + V(CF1, J1)
+       >= D( CF1, J1));
+    ! Upper limit on exports ;
+     [ME] @SUM( PLANT( I1): E( CF1, I1)) <= EB( CF1);
+   );
+  ! Components of objective;
+   PHIPSI = @SUM( CR( CR1): 
+    @SUM( PLANT( I1): PD(CR1) * U(CR1, I1)));
+   PHILAM = @SUM( CF( CF1):
+    @SUM(PLANT(I1): @SUM(MARKET(J1):MUF(I1,J1)* 
+     X(CF1, I1, J1))) + @SUM( MARKET( J1): 
+      MUV( J1) * V( CF1, J1)) + @SUM( PLANT( I1):
+       MUE( I1) * E( CF1, I1)));
+   PHIPI = @SUM( CFXM( CF1, I1):  
+    PV( CF1) * V( CF1, I1));
+   PHIEPS = @SUM( CFXP( CF1, I1): 
+    PE( CF1) * E( CF1, I1));
+   [OBJROW] MIN = PHIPSI + PHILAM + PHIPI - PHIEPS;
+ DATA:
+  A1= -1.58, -1.38, 0,    0,    0,
+      -0.63,  0,    0,    0,    0,
+       0,    -0.57, 0,    0,    0,
+       0,     0,    0,   -0.58, 0,
+       0,     0,   -0.33, 0,   -0.12;
+  A2=  1,     0,   -0.77, 0,   -0.95,
+       0,     1,    0,   -1.09, 0;
+  A3=  0,     0,    1,    1,    1;
+  B = 1 0 0 0 0
+      0 0 1 0 0
+      0 0 0 0 1
+      0 1 0 0 0
+      0 0 0 1 0;
+  K = 3.25, 1.40, 1.10, 0,    0,
+      1.50, 0.85, 0,    0,    0,
+      2.07, 1.50, 1.30, 0,    0,
+      0,     0,   0,    0.98, 1,
+      0,     0,   0,    1.13, 0.56;
+  RD1= 1204  218   1125
+       1017  0     1030
+       819  1305   704
+       1017  0     1030
+       185  1085   760;
+  RD2 = 739, 521,  0, 521, 315;
+  RD3 = 428, 521,  300;
+
+  PD = 18.7, 52.17, 14,    24,  105;
+  PV = 150;
+  PE = 140;
+  EB = 1;
+  DD = 55, 30, 15;
+ ENDDATA
+END

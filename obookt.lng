@@ -1,0 +1,40 @@
+MODEL:
+! A strategy for airlines to minimize the loss from
+  no-shows is to overbook flights.  Too little
+  overbooking results in lost revenue.  Too much
+  overbooking results in excessive penalties.  This 
+  model computes expected profits for various levels
+  of overbooking.;  
+
+  SETS:
+    SEAT/1..16/;           ! seats available ;
+    EXTRA/1..6/: EPROFIT;  ! expected profits from
+                             overbooking 1-6 seats;
+  ENDSETS
+
+  ! Available data;
+    V = 225;  ! Revenue from a sold seat;
+    P = 100;  ! Penalty for a turned down customer;
+    Q = .04;  ! Probability customer is a no-show;
+
+  ! No. of seats available;
+    N = @SIZE( SEAT);
+
+  ! Expected profit with no overbooking;
+    EPROFIT0 = V * @SUM( SEAT(I): 
+     (1 - @PBN(1- Q, N, I - 1)));
+
+  ! Expected profit if we overbook by 1 is:
+    EPROFIT0 + Prob(he shows) * ( V - (V + P) * 
+    Prob(we have no room));
+    EPROFIT( 1) = EPROFIT0 +
+     ( 1 - Q) * ( V - ( V + P) * @PBN( Q, N, 0));
+
+  ! In general;
+    @FOR( EXTRA( I)| I #GT# 1:
+    EPROFIT( I) = EPROFIT( I - 1) +
+     (1 - Q) * ( V - ( V + P) * 
+      @PBN( Q, N + I - 1, I - 1));
+    );
+
+END

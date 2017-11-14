@@ -1,0 +1,92 @@
+MODEL:
+! MULLDC;
+! Multilevel DC location model, based on 
+  Geoffrion/Graves, Man. Sci., Jan., 1974;
+! Original LINGO model by Kamaryn Tanner;
+ SETS:
+! Two products;
+  PRODUCT/ A, B/;
+! Three plants;
+  PLANT/ P1, P2, P3/;
+! Each DC has an associated fixed cost, F,
+  and an "open" indicator, Z.;
+  DISTCTR/ DC1, DC2, DC3, DC4/: F, Z;
+! Five customers;
+  CUSTOMER/ C1, C2, C3, C4, C5/;
+! D = Demand for a product by a customer.;
+  DEMLINK( PRODUCT, CUSTOMER): D;
+! S = Capacity for a product at a plant.;
+  SUPLINK( PRODUCT, PLANT): S;
+! Each customer is served by one DC, 
+  indicated by Y.;
+  YLINK( DISTCTR, CUSTOMER): Y;
+! C= Cost/ton of a product from a plant to a DC,
+  X= tons shipped.;
+  CLINK( PRODUCT, PLANT, DISTCTR): C, X;
+! G= Cost/ton of a product from a DC to a customer.;
+  GLINK( PRODUCT, DISTCTR, CUSTOMER): G;
+ENDSETS
+DATA:
+! Plant Capacities;
+ S = 80, 40, 75,
+     20, 60, 75;
+! Shipping costs, plant to DC;
+ C = 1,     3,   3,   5,       ! Product A;
+     4,   4.5, 1.5, 3.8,
+     2,   3.3, 2.2, 3.2,
+     1,     2,   2,   5,       ! Product B;
+     4,   4.6, 1.3, 3.5,
+     1.8,   3,   2, 3.5;
+! DC fixed costs;
+ F = 100, 150, 160, 139;
+! Shipping costs, DC to customer;
+ G =   5,   5,   3,   2,   4,  ! Product A;
+     5.1, 4.9, 3.3, 2.5, 2.7,
+     3.5,   2, 1.9,   4, 4.3,
+     1,   1.8, 4.9, 4.8,   2,
+     5,   4.9, 3.3, 2.5, 4.1,  ! Product B;
+     5,   4.8,   3, 2.2, 2.5,
+     3.2,   2, 1.7, 3.5,   4,
+     1.5,   2,   5,   5, 2.3;
+! Customer Demands;
+ D =  25,  30,  50,  15,  35,
+      25,   8,   0,  30,  30;
+ENDDATA
+!--------------------------------------------------;
+! Objective function minimizes costs.;
+ [OBJ] MIN = SHIPDC + SHIPCUST + FXCOST;
+ SHIPDC = @SUM( CLINK: C * X);
+ SHIPCUST =
+  @SUM( GLINK( I, K, L): 
+   G( I, K, L) * D( I, L) * Y( K, L));
+ FXCOST = @SUM( DISTCTR: F * Z);
+
+! Supply Constraints;
+ @FOR( PRODUCT( I):
+  @FOR( PLANT( J):
+   @SUM( DISTCTR( K): X( I, J, K)) <= S( I, J))
+ );
+
+! DC balance constraints;
+ @FOR( PRODUCT( I):
+  @FOR( DISTCTR( K):
+   @SUM( PLANT( J): X( I, J, K)) =
+    @SUM( CUSTOMER( L): D( I, L)* Y( K, L)))
+ );
+
+! Demand;
+ @FOR( CUSTOMER( L):
+  @SUM( DISTCTR( K): Y( K, L)) = 1
+ );
+
+! Force DC K open if it serves customer L;
+ @FOR( CUSTOMER( L):
+  @FOR( DISTCTR( K): Y( K, L) <= Z( K))
+ );
+
+! Y binary;
+ @FOR( DISTCTR( K):
+  @FOR( CUSTOMER( L): @BIN( Y( K,L)))
+ );
+
+END

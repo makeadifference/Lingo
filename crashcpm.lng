@@ -1,0 +1,87 @@
+MODEL:
+  ! A PERT/CPM model with crashing;
+  !
+  ! The precedence diagram is:
+  !       /FCAST\---SCHED----COSTOUT\
+  !      /       \                   \
+  ! FIRST         \                   \
+  !      \         \                   \
+  !       \SURVEY-PRICE-----------FINAL;
+ ! All tasks must be a direct or indirect predecessor
+   of the last task on the input list;
+
+ ! Keywords: Crashing, PERT, CPM, Project management;
+SETS:
+  TASK:
+              TIME,  ! Normal time for task;
+              TMIN,  ! Min time at max crash;
+              CCOST, ! Crash cost/unit time;
+                 EF, ! Earliest finish;
+              CRASH; ! Amount of crashing;
+
+ ! The precedence relations;
+  PRED( TASK, TASK);
+ ENDSETS
+
+DATA:
+  DUEDATE = 31; ! Project due date;
+ ! The tasks and their...;
+  TASK = FIRST, FCAST, SURVEY, PRICE, SCHED, COSTOUT, FINAL;
+  TIME =  0     14      3       3      7      4       10; ! Normal times;
+  TMIN =  0      8      2       1      6      3        8; ! Crash times;
+  CCOST = 0      4      1       2      4      5        3; ! Cost/unit to crash;
+  PRED = FIRST,FCAST   ! The precedence pairs;
+         FIRST,SURVEY,
+         FCAST,PRICE 
+         FCAST,SCHED  
+         SURVEY,PRICE,
+         SCHED,COSTOUT 
+         PRICE,FINAL  
+         COSTOUT,FINAL;
+ENDDATA
+
+SUBMODEL CRASHCPM:
+! The crashing LP model;
+! Define earliest finish, each predecessor of a task
+  constrains when the earliest time the task can be
+  completed. The earliest the preceding task can be
+  finished plus the time required for the task minus
+  any time that could be reduced by crashing this
+  task.;
+  @FOR( PRED( I, J):
+    EF( J) >= EF( I) + TIME( J) - CRASH( J)
+  );
+
+! For each task, the most it can be crashed is the
+  regular time of that task minus minimum time for
+  that task;
+  @FOR( TASK( J):
+    CRASH( J) <= TIME( J) - TMIN( J)
+  );
+
+! Meet the due date;
+! This assumes that there is a single last task;
+  EF( @SIZE( TASK)) <= DUEDATE;
+
+! Minimize the sum of crash costs;
+  MIN = CRASHCOST;
+    CRASHCOST = @SUM( TASK(j): CCOST(j) * CRASH(j));
+ENDSUBMODEL
+
+CALC:
+  @SET('TERSEO',2); ! Turn off default output;
+  @SOLVE( CRASHCPM);
+  ! Print a simple report;
+  @WRITE(@NEWLINE(1),' Project length= ', EF(@SIZE(TASK)), @NEWLINE(1));
+  @WRITE(' Crashing cost = ', CRASHCOST, @NEWLINE(1));
+   @WRITE('   Task   Start_At  End_At  Crash_Amt  Crash_Cost', @NEWLINE(1));
+  @FOR(TASK(j):
+    @WRITE( ' ', @FORMAT(TASK(j),"8s"),
+            ' ', @FORMAT(EF(j)-TIME(j)+CRASH(j),"7.1f"),
+            ' ', @FORMAT(EF(j),"7.1f"),
+            ' ', @FORMAT(CRASH(j),"7.1f"),
+           '  ', @FORMAT(CCOST(j)*CRASH(j),"9.2f"),
+             @NEWLINE(1));
+      );
+ENDCALC
+END

@@ -1,0 +1,120 @@
+MODEL:
+
+ ! Staffing example:
+    Step 1:
+       - Minimize total cost
+    Step 2:
+       - Fix costs to their level from Step 1
+       - Solve to minimize max staff overage
+         on any given day, thereby spreading
+         excess staff through the week
+    Step 3:
+       - Fix max overage to it's level from  
+         Step 2
+       - Solve to minimize the number working
+         on a Sunday
+  ;
+
+ SETS:
+    DAY / MON, TUE, WED, THU, FRI, SAT, SUN/ :
+       NEED, START, COST, EXCESS;
+ ENDSETS
+
+ DATA:
+    NEED =  18,  15,  12,  16,  19,  14,  12;
+    COST = 200, 200, 200, 200, 200, 200, 200;
+ ENDDATA
+
+ SUBMODEL OBJ_COST:
+   MIN = TTL_COST;
+ ENDSUBMODEL
+
+ SUBMODEL OBJ_MAX_EXCESS:
+   MIN = MAX_EXCESS;
+ ENDSUBMODEL
+
+ SUBMODEL OBJ_MIN_SUNDAY_STARTS:
+   MIN = EXCESS( @INDEX( DAY, SUN));
+ ENDSUBMODEL
+
+ SUBMODEL BASE:
+   ! Compute cost;
+   TTL_COST = @SUM( DAY( D) : START( D) * COST( D));
+
+   ! The constraints;
+   @FOR( DAY( D):
+    @SUM( DAY( COUNT)| COUNT #LE# 5:
+    START( @WRAP( D - COUNT + 1, @SIZE( DAY)))) - 
+     EXCESS( D)= NEED( D)
+   );
+
+   ! Computes the maximum staff excess;
+   @FOR( DAY( D): MAX_EXCESS >= EXCESS( D)); 
+
+   ! Starts must be integral;
+   @FOR( DAY: @GIN( START));
+
+   @BND( 0, TTL_COST, BNDU_COST);
+   @BND( 0, MAX_EXCESS, BNDU_MAX_EXCESS);
+ ENDSUBMODEL
+
+ CALC:
+   !Run in quiet mode;
+   @SET( 'TERSEO', 2);
+ 
+   !Free up bounds;
+   BNDU_COST =  1.E10;
+   BNDU_MAX_EXCESS =  1.E10;
+
+   !Solve to minimize cost;
+   @SOLVE( OBJ_COST, BASE);
+
+   @WRITE( 'Solution 1 - min cost:', @NEWLINE( 1));
+   @WRITE( '     Start: ');
+   @WRITEFOR( DAY: @FORMAT( START, '6.0f'));
+   @WRITE( @NEWLINE( 1));
+   @WRITE( '   On Duty: ');
+   @WRITEFOR( DAY: @FORMAT( NEED + EXCESS, '6.0f'));
+   @WRITE( @NEWLINE( 1));
+   @WRITE( '    Excess: ');
+   @WRITEFOR( DAY: @FORMAT( EXCESS, '6.0f'));
+   @WRITE( @NEWLINE( 2));
+
+   !Fix TTL_COST to optimal value;
+   BNDU_COST = TTL_COST;
+
+   !Re-solve to minimize the max excess staff on any given day
+    in order to spread any excess staff throughout the week;
+   @SOLVE( OBJ_MAX_EXCESS, BASE);
+
+   @WRITE( 'Solution 2 - min cost / min max excess:', @NEWLINE( 1));
+   @WRITE( '     Start: ');
+   @WRITEFOR( DAY: @FORMAT( START, '6.0f'));
+   @WRITE( @NEWLINE( 1));
+   @WRITE( '   On Duty: ');
+   @WRITEFOR( DAY: @FORMAT( NEED + EXCESS, '6.0f'));
+   @WRITE( @NEWLINE( 1));
+   @WRITE( '    Excess: ');
+   @WRITEFOR( DAY: @FORMAT( EXCESS, '6.0f'));
+   @WRITE( @NEWLINE( 2));
+
+   !Fix max excess to optimal level;
+   BNDU_MAX_EXCESS = MAX_EXCESS;
+
+   !Re-solve to minimize total workers on Sundays;
+   @SOLVE( OBJ_MIN_SUNDAY_STARTS, BASE);
+
+   @WRITE( 'Solution 3 - min cost / min max excess / min Sunday:', @NEWLINE( 1));
+   @WRITE( '     Start: ');
+   @WRITEFOR( DAY: @FORMAT( START, '6.0f'));
+   @WRITE( @NEWLINE( 1));
+   @WRITE( '   On Duty: ');
+   @WRITEFOR( DAY: @FORMAT( NEED + EXCESS, '6.0f'));
+   @WRITE( @NEWLINE( 1));
+   @WRITE( '    Excess: ');
+   @WRITEFOR( DAY: @FORMAT( EXCESS, '6.0f'));
+   @WRITE( @NEWLINE( 2));
+
+ ENDCALC
+      
+END

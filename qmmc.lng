@@ -1,0 +1,22 @@
+MODEL:
+ ! Compute statistics for a multi-server system with
+   Poisson arrivals, exponential service time 
+   distribution.
+
+ ! We prompt the user for all the system parameters;
+ DATA:
+   ARV_RATE = ?;
+   SRV_TIME = ?;
+   NO_SRVRS = ?;
+ ENDDATA
+
+! The model;
+! Average no. of busy servers;
+   LOAD = ARV_RATE * SRV_TIME;
+! Probability a given call must wait;
+   PWAIT = @PEB( LOAD, NO_SRVRS);
+! Conditional expected wait, i.e., given must wait;
+   WAITCND = SRV_TIME/( NO_SRVRS - LOAD);
+! Unconditional expected wait;
+   WAITUNC = PWAIT * WAITCND;
+END

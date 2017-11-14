@@ -1,0 +1,25 @@
+MODEL:
+ 
+ !NOTE: Must set Lingo|Options|Fixed Var Reduction=Always!;
+
+ DATA:
+
+ ! The average demand;
+    MU = 144;
+
+ ! Opportunity cost of each unit of lost demand;
+    P = 11;
+
+ ! Cost/unit of excess inventory;
+    H = 5;
+
+ ENDDATA
+
+ ! Calculate the order-up-to point, S, using the
+   newsboy problem equation;
+  @PPS( MU, S) = P / ( P + H);
+
+ ! PS is the expected profit of being at S;
+  PS = P * MU - H * (S -MU) - (P + H) * @PPL(MU, S);
+
+END

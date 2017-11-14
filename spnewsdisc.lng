@@ -1,0 +1,42 @@
+MODEL: !OV = 1550.000;
+
+! Core Model --------------------------------------------+;
+
+DATA:
+   PURCHASE_COST = 30;
+   HOLDING_COST = 10;
+   SHORTAGE_COST = 5;
+   REVENUE = 60;
+ENDDATA
+
+MAX = 
+ + REVENUE * SOLD 
+ - PURCHASE_COST * BOUGHT 
+ - HOLDING_COST * INVENTORY 
+ - SHORTAGE_COST * LOST_SALES;
+
+SOLD <= DEMAND;
+SOLD <= BOUGHT;
+INVENTORY >= BOUGHT - SOLD;
+LOST_SALES >= DEMAND - SOLD;
+
+! SP Declarations ---------------------------------------+;
+
+! Buying decision is made at time 0;
+@SPSTGVAR( 0, BOUGHT);
+
+! Demand is a r.v. in time 1;
+@SPSTGRNDV( 1, DEMAND);
+
+! List of observations;
+SETS:
+   OBS: O_DEMAND;
+ENDSETS
+DATA:
+   O_DEMAND = 77 54 63 50 81;
+ENDDATA
+
+! declare a tabular distribution for demand;
+@SPDISTTABLE( O_DEMAND, DEMAND);
+
+END

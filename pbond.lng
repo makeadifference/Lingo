@@ -1,0 +1,42 @@
+MODEL:
+! Bond portfolio/cash matching problem. Given cash
+  needs in a series of future periods, what 
+  collection of bonds should we buy to meet these
+  needs?;
+SETS:
+   BOND/A B/ : 
+      MATAT,   ! Maturity period;
+      PRICE,   ! Price;
+      CAMNT,   ! Coupon;
+      BUY;     ! Amount to buy;
+   PERIOD/1..15/:
+      NEED,    ! Cash needed each period;
+      SINVEST; ! Short term investment each period;
+ENDSETS
+
+DATA:
+   STRTE = .04;         ! Short term interest rate;
+   MATAT = 6, 13;       ! Years to maturity;
+   PRICE = .980, .965;  ! Bond purchase prices;
+   CAMNT = .060, .065;  ! Bond coupon amounts;
+   NEED = 10, 11, 12, 14, 15, 17, 19, 20, 22, 24,
+          26, 29, 31, 33, 36; ! Cash needs;
+ENDDATA
+! Minimize the total investment required to generate
+  the stream of future cash needs;
+   MIN = LUMP;
+! First period is slightly special;
+   LUMP = NEED( 1) + SINVEST( 1) + 
+    @SUM( BOND: PRICE * BUY);
+! For subsequent periods;
+   @FOR( PERIOD( I)| I #GT# 1:
+    @SUM( BOND( J)| MATAT( J) #GE# I:
+     CAMNT( J) * BUY( J)) +
+    @SUM( BOND( J)| MATAT( J) #EQ# I:
+     BUY( J)) +
+    ( 1 + STRTE) * SINVEST( I - 1) =
+    NEED( I) + SINVEST( I);
+   );
+! Can only buy integer bonds;
+   @FOR( BOND( J): @GIN( BUY( J)));
+END

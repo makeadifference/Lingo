@@ -1,0 +1,50 @@
+MODEL:
+ ! Markov chain model;
+SETS:
+ ! There are four states in our model and over time
+   the model will arrive at a steady state 
+   equilibrium.
+   SPROB( J) = steady state probability;
+ STATE/ A B C D/: SPROB;
+
+ ! For each state, there's a probability of moving
+   to each other state. TPROB( I, J) = transition
+   probability;
+ SXS( STATE, STATE): TPROB;
+ENDSETS
+
+DATA:
+ ! The transition probabilities. These are proba-
+   bilities of moving from one state to the next in
+   each time period. Our model has four states, for
+   each time period there's a probability of moving
+   to each of the four states. The sum of proba-
+   bilities across each of the rows is 1, since the
+   system either moves to a new state or remains in
+   the current one.;
+   TPROB = .75  .1  .05  .1
+           .4   .2  .1   .3
+           .1   .2  .4   .3
+           .2   .2  .3   .3;
+ENDDATA
+
+! The model;
+!  Steady state equations;
+!   Only need N equations, so drop last;
+  @FOR( STATE( J)| J #LT# @SIZE( STATE):
+   SPROB( J) = @SUM( SXS( I, J): SPROB( I) *
+    TPROB( I, J))
+  );
+
+! The steady state probabilities must sum to 1;
+  @SUM( STATE: SPROB) = 1;
+
+! Check the input data, warn the user if the sum of
+  probabilities in a row does not equal 1.;
+  @FOR( STATE( I):
+   @WARN( 'Probabilities in a row must sum to 1.',
+    @ABS( 1 - @SUM( SXS( I, K): TPROB( I, K)))
+     #GT# .000001);
+  );
+
+END

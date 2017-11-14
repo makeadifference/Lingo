@@ -1,0 +1,31 @@
+MODEL:
+ ! Machine repair model;
+ SETS:
+  NREP/1..5/: ! Consider 5 possible repair persons;
+       NDOWN, ! Expected no. of down machines;
+       CPERHR,! Expected cost/hour of down machines;
+       TCOST; ! Total expected cost/hour;
+ ENDSETS
+
+ ! The input data;
+  NMACH = 10;! No. machines subject to breakdown;
+  RTIME = 1; ! Average repair time;
+  UPTIME = 5;! Mean time between failures;
+  CR = 30;   ! Hourly cost of a repair person;
+  CM = 350;  ! Hourly cost of a down machine
+
+ ! The machine repairman queuing model;
+ ! For each case of 1 - 5 service people calculate
+   expected number of machines down, cost per hour
+   of down machines, and total cost per hour of 
+   operations. @PFS calculates the Probability in
+   a Finite Source, in this case expected number of
+   machines under repair. ;
+  @FOR( NREP( I):
+   NDOWN( I) = 
+    @PFS( NMACH * RTIME / UPTIME, I, NMACH);
+   CPERHR( I) = CM * NDOWN( I);
+   TCOST( I) = CPERHR( I) + CR * I
+  );
+
+END

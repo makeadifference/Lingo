@@ -1,0 +1,43 @@
+MODEL:
+ !
+Queens8: Position 8 queens on a chessboard so none can be
+attacked.  Note the use of the @TABLE() output operation 
+to display the layout of the final chessboard.
+;
+SETS:
+   EDGE/E1..E200/;
+   BOARD( EDGE, EDGE): X;
+ENDSETS
+  N = @SIZE( EDGE);
+  @FOR( EDGE( K):
+   ! Only 1 in a row;
+     @SUM( EDGE( J): X( K, J)) <= 1;
+   ! Only 1 in a column;
+     @SUM( EDGE( I): X( I, K)) <= 1;
+      );
+  ! The two main diagonals;
+    @SUM( EDGE( K): X( K, K)) <= 1;
+    @SUM( EDGE( K): X( K, N - K + 1)) <= 1;
+  ! The off diagonals;
+  @FOR( EDGE( K)| K #LT# N - 1:
+    ! Above the right diagonal;
+     @SUM( EDGE( I)| I + K #LE# N: X( I, I + K)) <= 1;
+    ! Below the right diagonal;
+     @SUM( EDGE( J)| J + K #LE# N: X( J + K, J)) <= 1;
+    ! Above the left diagonal;
+     @SUM( EDGE( I)| K + 2 - I #GT# 0: X( I, K + 2 - I)) <= 1;
+    ! Below the left diagonal;
+     @SUM( EDGE( J)| N + K + 1 - J #LE# N: 
+          X(N + K + 1 - J, J)) <= 1;
+     );
+ ! Make all the variables binary;
+  @FOR( BOARD: @BIN( X););
+ ! We would like to put on as many as possible;
+  MAX = @SUM( BOARD: X);
+
+  DATA:
+     @TEXT() =  '  The final chessboard:';
+     @TEXT() = @TABLE( X);
+  ENDDATA
+
+END

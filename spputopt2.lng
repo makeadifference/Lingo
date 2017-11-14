@@ -1,0 +1,131 @@
+MODEL:
+
+DATA:
+   INIT_PRICE = 100;
+   STRIKE_PRICE = 99;
+   RISK_FREE_RATE = .04;
+ENDDATA
+
+SETS:
+   PERIODS /P0..P5/: RETURN, PRICE, SELL, PV, SAMP_SZ;
+ENDSETS
+
+SUBMODEL PUT_CORE:
+
+! Core Model -------------------------------------------+;
+
+[R_OBJ] MAX = PV( @INDEX( P0));
+
+[R_PRICE_INIT] PRICE( 1) = INIT_PRICE;
+@FOR( PERIODS( P) | P #GT# @INDEX( P0):
+   [R_PRICE] PRICE( P) = PRICE( P - 1) * ( 1 + RETURN( P));
+);
+
+@FOR( PERIODS( P) | P #LT# @SIZE( PERIODS):
+   [R_PV] PV( P) = SELL( P) * ( STRIKE_PRICE - PRICE( P)) + 
+    PV( P + 1) / ( 1 + RISK_FREE_RATE);
+);
+[R_PV_NPERIODS] PV( @SIZE( PERIODS)) = 
+ SELL( @SIZE( PERIODS)) * ( STRIKE_PRICE - PRICE( @SIZE( PERIODS)));
+
+[R_SELL_EQ_1] @SUM( PERIODS( P): SELL( P)) <= 1;
+
+[R_RETURN_P0] RETURN( @INDEX( P0)) = 0;
+
+@FOR( PERIODS( P): @FREE( PV( P)));
+
+ENDSUBMODEL
+
+! SP Related Declarations -----------------------------+;
+
+SETS:
+   OUTCOMES: O_RETURN;
+ENDSETS
+
+DATA:
+   SAMP_SZ = 0 4 4 2 2 2;
+   O_RETURN = .09 .03 -.01 -.08;
+ENDDATA
+
+SUBMODEL PUT_SP:
+
+! Return is a random variable;
+@FOR( PERIODS( P) | P #GT# @INDEX( P0): 
+   @SPSTGRNDV( P - 1, RETURN( P));
+);
+
+! The recourse/stochastic variables;
+@FOR( PERIODS( P): 
+   @SPSTGVAR( P - 1, SELL( P));
+);
+
+@FOR( PERIODS( P) | P #GT# @INDEX( P0):
+   ! Declare a instance of our parent distribution;
+   @SPDISTTABLE( O_RETURN, RETURN( P));
+);
+
+@FOR( PERIODS( P) | P #GT# @INDEX( P0):
+   ! Set the sample size for the stage;
+   @SPSAMPSIZE( P - 1, SAMP_SZ( P));
+);
+
+ENDSUBMODEL
+
+DATA:
+    NBUCKETS = 6;
+ENDDATA
+
+SETS:
+    BUCKETS /1..NBUCKETS/: HISTO;
+ENDSETS
+
+! Solve and display a histogram -----------------------+;
+
+CALC:
+   !Terse output;
+   @SET( 'TERSEO', 1);
+
+   ! Solve the main model;
+   @SOLVE( PUT_CORE, PUT_SP);
+
+   ! Compute the max PV;
+   MAXPV = 0;
+   I = 1;
+   @WHILE( I #LT# @SPNUMSCENE():
+      I = I + 1;
+      @SPLOADSCENE( I);
+      MAXPV = @SMAX( MAXPV, PV( @INDEX( P0)));
+   );
+
+   ! Display a histogram of PV values;
+   BWIDTH = @FLOOR( MAXPV / ( NBUCKETS - 1)) + 1;
+
+   @FOR( BUCKETS( K): HISTO( K) = 0);
+  
+   I = 0;
+   @WHILE( I #LT# @SPNUMSCENE():
+      I = I + 1;
+      @SPLOADSCENE( I);
+      PVN = PV( @INDEX( P0));
+      @IFC( PVN #LE# 1.E-5:
+         HISTO( 1) = HISTO( 1) + 1;
+      @ELSE
+         IBUCKET = @FLOOR( ( PVN + 1.E-5)/ BWIDTH) + 2;
+         HISTO( IBUCKET) = HISTO( IBUCKET) + 1;
+      );
+   );
+
+   @WRITE( '   Value      Obs    Histogram', @NEWLINE( 1),
+    '   ', 100*'.', @NEWLINE( 2));
+
+   @FOR( BUCKETS( K):
+     @WRITE( '   ',
+      '<=', @FORMAT( ( K - 1)* BWIDTH, '3G'), '  :  ', 
+      @FORMAT( HISTO( K), '4G'), '  : ', 
+      HISTO( K) * '*', @NEWLINE( 2)
+     );
+   );
+
+ENDCALC
+
+END

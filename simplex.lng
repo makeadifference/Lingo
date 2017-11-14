@@ -1,0 +1,117 @@
+MODEL:
+
+! Simple Simplex iterator exploiting the 
+  programming capabilites of a LINGO CALC section.
+ Assumptions:
+   First row of matrix is objective,
+   Objective is MIN,
+   Last column of matrix is RHS,
+   Constraints are already in equality form,
+   Initial tableau is feasible.
+;
+SETS:
+ ROW;
+ COL;
+ RXC( ROW, COL): A;
+ENDSETS
+DATA: 
+
+ ! The Astro-Cosmo problem.
+    The last three variables, cols 4-6,
+    are the slack variables;
+  COL = 1..7;
+  ROW = 1..4;
+  A =
+    -20  -30  -47   0   0   0     0
+     1    0     1   1   0   0    60
+     0    1     1   0   1   0    50
+     1    2     3   0   0   1   120
+;    
+ ! Some tolerances;
+    BigM = 9999999;   ! Infinity for our purposes;
+    RCTOL = .000001;  ! Entering variable reduced cost;
+    PIVTOL = .000001; ! Pivot size;
+    ITERLIM = 10;     ! Iteration limit;
+ENDDATA
+
+CALC:
+ @SET('TERSEO', 2); ! Turn off default output;
+ @SET('LINLEN', 65); ! Set line length for output;
+ N = @SIZE( COL);
+ M = @SIZE( ROW);
+ ITER = 0; ! Number of iterations so far;
+
+! Iterate while MORE = 1;
+ MORE = 1;
+ @WHILE( MORE:  ! The major loop;
+   @WRITE(@NEWLINE(1), ' Current tableau:', @NEWLINE(1));
+   @FOR( ROW(i):
+     @FOR( COL( j):
+       @WRITE( @FORMAT(A(i,j),"9.4F"), ' ');
+        );
+    @WRITE( @NEWLINE(1));
+     );
+ 
+! Find entering variable;
+   JPIV = 0;
+   RCBEST = - RCTOL;
+   @FOR( COL(j) | j #LT# N:
+     @IFC( A(1,j) #LT# RCBEST:
+        JPIV = j;
+        RCBEST = A(1,j);
+         );
+       );
+   @IFC( JPIV #GT# 0:
+     @WRITE( @NEWLINE(1),' Entering column= ', JPIV, @NEWLINE(1));
+    @ELSE
+      MORE = 0; ! We are done flag;
+      @WRITE(' No more attractive pivots possible.', @NEWLINE(1));
+       ); 
+
+  ! Update iteration count;
+    @IFC( JPIV #GT# 0: ITER = ITER + 1);
+    @IFC( ITER #GT# ITERLIM:
+      MORE = 0;
+      @WRITE(' Exceeded iteration limit of ', ITERLIM, @NEWLINE(1));
+        );
+
+ ! Find a pivot row that maintains feasibility;
+   @IFC( MORE:
+     IPIV = 0;
+     PIVBEST = BigM;
+     @FOR( ROW(i) | i #GT# 1:
+       @IFC( A(i,JPIV) #GT# PIVTOL:
+         RATIO = A(i,N)/A(i,JPIV);
+         @IFC( RATIO #LT# PIVBEST:
+           PIVBEST = RATIO;
+           IPIV = i;
+            );
+          );
+        ); ! @FOR( ROW(i)...;
+
+    @IFC( IPIV #GT# 0:
+      @WRITE(' Pivot row= ', IPIV,', giving the new', @NEWLINE(1));
+      @ELSE
+        MORE = 0; ! We are done flag;
+        @WRITE(
+         ' No pivot row found. Entering column is unbounded.', 
+         @NEWLINE(1));
+        ); ! @IFC( IPIV...;
+
+ ! Do the pivot;
+     PIVOT = A( IPIV, JPIV);
+ ! Update pivot row;
+     @FOR( COL(j):
+       A(IPIV,j) = A(IPIV,j)/ PIVOT;
+         );
+ ! Update other rows;
+     @FOR( ROW(i) | i #NE# IPIV:
+       AIJP = A(i,JPIV);
+       @FOR( COL(j):
+         A(i,j) = A(i,j) - AIJP*A(IPIV,j);
+           );
+        ); ! @FOR( ROW(i)...;
+     );  ! @IFC( MORE....;
+    ); ! @WHILE( MORE....;
+ENDCALC
+END

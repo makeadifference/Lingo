@@ -1,0 +1,32 @@
+MODEL:
+! A 3 Warehouse, 4 Customer 
+   Transportation Problem;
+! Data is read from an external 
+   data files and the solution 
+   is also writen to a text file.;
+SETS:
+   WAREHOUSE: CAPACITY;
+   CUSTOMER: DEMAND;
+   ROUTES( WAREHOUSE, CUSTOMER) : COST, VOLUME;
+ENDSETS
+
+DATA:
+   WAREHOUSE, CAPACITY =   @TEXT( 'TRANWH.ldt');
+   CUSTOMER, DEMAND = @TEXT( 'TRANCUST.ldt');
+   ROUTES, COST = @TEXT( 'TRANROUTES.ldt');
+   @TEXT( 'TRANSOLUTION.txt') = ROUTES, VOLUME;
+ENDDATA
+
+! The objective;
+ [OBJ] MIN = @SUM( ROUTES: COST * VOLUME);
+
+! The demand constraints;
+ @FOR( CUSTOMER( J): [DEM]
+  @SUM( WAREHOUSE( I): VOLUME( I, J)) >= 
+   DEMAND( J));
+
+! The supply constraints;
+ @FOR( WAREHOUSE( I): [SUP]
+  @SUM( CUSTOMER( J): VOLUME( I, J)) <= 
+   CAPACITY( I));
+END

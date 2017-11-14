@@ -1,0 +1,32 @@
+MODEL:
+! Chemical equilibrium problem of Peters, Hayes and 
+! Hieftje. Calculate concentrations of various components
+! of phosphoric acid, H3PO4, with a pH of 8 and total 
+! phosphate concentration of .10. The equilibrium equations
+! in obvious form look like:
+!
+!    H2P * H/ H3P = .0075;
+!
+! However, for scale reasons it is better to take logs thus;
+   LH2P + LH - LH3P = @LOG( .0075);
+
+! Ditto for other equilibrium equations;
+   LHP + LH - LH2P = @LOG( 6.2 * 10^-8);
+   LH + LP - LHP = @LOG( 4.8 * 10^-13);
+   LH = @LOG( 10 ^-8);
+
+! Convert back to original variables;
+   H   = @EXP( LH);
+   P   = @EXP( LP);
+   HP  = @EXP( LHP);
+   H2P = @EXP( LH2P);
+   H3P = @EXP( LH3P);
+   H3P + H2P + HP + P = .1;
+
+! Must unconstrain log variables;
+ @FREE( LH2P); @FREE( LH); @FREE( LH3P); 
+ @FREE( LHP); @FREE( LP);
+
+! Solution should be: LH2P= -4.2767, LH= -18.4207,
+  LH3P= -17.8045, LHP= -2.4522, LP= -12.3965;
+END

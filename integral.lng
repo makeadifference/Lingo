@@ -1,0 +1,14 @@
+MODEL:
+
+! Takes the integral of the standard normal
+distribution over the interval [-5,1.645];
+
+PROCEDURE NORMAL:
+   Y = @EXP( -X * X / 2) / (( 2 * @PI()) ^ 0.5); 
+ENDPROCEDURE
+
+CALC:
+   PROB = @INTEGRAL( NORMAL, X, -5, 1.645, Y);
+ENDCALC
+
+END

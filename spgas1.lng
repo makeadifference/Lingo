@@ -1,0 +1,89 @@
+MODEL:
+
+!See: http://stoprog.org/index.html?spintroduction.html
+
+In the first year a gas company buys gas from the market, 
+delivers some to its customers right away and puts the rest 
+in storage for next year. The following year the company can 
+supply from storage or buy from the market. The decision 
+variables are: 
+
+1) how much gas to purchase and deliver, 
+2) how much gas to purchase and store, and 
+3) how much gas to take from storage and deliver to customers. 
+
+The decision depends on the price of gas in year 1 and year 2, 
+the storage cost (say $1 per unit per year), the size of the 
+storage facility, and the demand in each period. With this 
+information the problem can be modelled as a simple linear 
+program with the objective to minimize overall cost. In practice 
+the price and demand in year 2 will be uncertain. Suppose that 
+year 1 is a normal year and that year 2 can be one of three 
+equally likely outcomes: normal, cold, or very cold. Each of 
+these outcomes has different data as shown in the following table: 
+  
+Outcome     Probability      Gas Cost ($)       Demand (units) 
+Normal          1/3              5.0                 100 
+Cold            1/3              6.0                 150 
+Very Cold       1/3              7.5                 180 
+
+Forming and solving the stochastic linear program gives the following solution: 
+  Year  Outcome    Purchase to Use  Purchase to Store  Storage  Cost ($)  
+    1    Normal          100              100          100     1100  
+    2    Normal            0                0            0        0  
+    2    Cold             50                0            0      300  
+    2    Very Cold        80                0            0      600  
+
+Expected Cost/OV = $1400 
+;
+
+   ! *** STEP 1 *** - Define Core Model;
+
+   ! Minimize Total Cost = Purchases + Holding;
+   [R_OBJ] MIN= PURCHASE_COST + HOLD_COST;
+
+   ! Compute purchase cost;
+   [R_PC] PURCHASE_COST = 5 * PURCHASE_1 + COST_2 * PURCHASE_2;
+
+   ! Compute holding cost;
+   [R_HC] HOLD_COST = INVENTORY_1 + INVENTORY_2;
+
+   ! Compute inventory levels;
+   [R_I1] INVENTORY_1 = PURCHASE_1 - 100;
+   [R_I2] INVENTORY_2 = INVENTORY_1 + PURCHASE_2 - DEMAND_2;
+
+   ! *** STEP 2 *** - Define Random Variables;
+
+   !The random variables are period 2's demand and cost.; 
+   @SPSTGRNDV( 1, COST_2);
+   @SPSTGRNDV( 1, DEMAND_2);
+
+   ! *** STEP 3 *** - Define initial decision and recourse variables;
+
+   !The initial decision is how much to purchase in period 1;
+   @SPSTGVAR( 0, PURCHASE_1);
+   !Period 2 purchases are a recourse variable after
+    the weather reveals itself;
+   @SPSTGVAR( 1, PURCHASE_2);
+
+   ! *** STEP 4 *** - Assign distributions to the random variables;
+
+   !Declare a discrete distribution called 'DST_DMD' with
+    three outcomes and two jointly distributed variables
+    (i.e., Demand and Cost);
+   @SPTABLESHAPE( 'DST_DMD', 3, 2);
+
+   !Load the three equally likely outcomes into 'DST_DMD';
+   !            Dist Name  Probability     Cost     Demand;
+   @SPTABLEOUTC( 'DST_DMD',       1/3,      5.0,      100);
+   @SPTABLEOUTC( 'DST_DMD',       1/3,      6.0,      150);
+   @SPTABLEOUTC( 'DST_DMD',       1/3,      7.5,      180);
+
+   !Declare a specific instance of the 'DST_DMD' distribution,
+    naming the instance 'DST_DMD_1';
+   @SPTABLEINST( 'DST_DMD', 'DST_DMD_1');
+
+   !Bind Period 2 Cost and Demand to the distribution instance;
+   @SPTABLERNDV( 'DST_DMD_1', COST_2, DEMAND_2);
+    
+END

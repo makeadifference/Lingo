@@ -1,0 +1,16 @@
+MODEL:
+  !  Total profit for the week;
+      MAX = 200 * WS + 300 * NC;
+
+  !  The total number of Wordsmiths produced is limited
+      by the supply of graphics chips;
+       WS <= 60;
+
+  !  The total number of Numbercrunchers produced is
+      limited by the supply of math coprocessors;
+       NC <= 40;
+
+  !  The total amount of memory used in all machines
+      manufactured for the week can't exceed 120 Mb;
+       WS + 2 * NC <= 120;
+END

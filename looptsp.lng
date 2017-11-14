@@ -1,0 +1,126 @@
+MODEL:
+ ! (TSPCUT) Traveling Salesman Problem.  Find the shortest tour that
+   visits each city exactly once. Subtour elimination method.
+ ! Keywords: TSP, traveling sales person, routing, tour;
+ SETS:
+  CITY; 
+  LINK( CITY, CITY):
+       DIST,  ! The distance matrix;
+          Y;  ! Y( I, J) = 1 if link I, J is in tour;
+  SUBTOUR: TOURSIZE;
+  SXC(SUBTOUR,CITY): FLAG;
+ ENDSETS
+DATA:
+  SUBTOUR = 1..20; ! Number subtour cuts we allow;
+  CITY = NYK ATL CHI CIN HOU LAX MON PHL PIT STL SND SNF;
+   ! Distance matrix for cities of National League of 
+      US baseball, circa 2004. It need not be symmetric;
+  DIST =
+     0  864  845  664 1706 2844  396   92  386 1002 2892 3032
+   864    0  702  454  842 2396 1196  772  714  554 2363 2679
+   845  702    0  324 1093 2136  764  764  459  294 2184 2187
+   664  454  324    0 1137 2180  798  572  284  338 2228 2463
+  1706  842 1093 1137    0 1616 1857 1614 1421  799 1521 2021
+  2844 2396 2136 2180 1616    0 2900 2752 2464 1842   95  405
+   396 1196  764  798 1857 2900    0  424  514 1058 2948 2951
+    92  772  764  572 1614 2752  424    0  305  910 2800 2951
+   386  714  459  284 1421 2464  514  305    0  622 2512 2646
+  1002  554  294  338  799 1842 1058  910  622    0 1890 2125
+  2892 2363 2184 2228 1521   95 2948 2800 2512 1890    0  500
+  3032 2679 2187 2463 2021  405 2951 2951 2646 2125  500    0;
+ENDDATA
+!-----------------------------------------------------------;
+SUBMODEL TSP_CUT:
+! Minimize total distance traveled;
+ MIN = @SUM( LINK: DIST * Y);
+
+! The Assignment constraints;
+  @FOR( CITY( K):
+  !  City K must be entered;
+    @SUM( CITY( I)| I #NE# K: Y( I, K))= 1;
+  !  City K must be departed;
+    @SUM( CITY( J)| J #NE# K: Y( K, J))= 1;
+  ! Cannot go to yourself;    Y( K, K) = 0;
+   );
+
+! Subtour cuts;
+  @FOR( SUBTOUR(t):
+!  FLAG(t,i) = 1 if city i is in subtour t;
+    @SUM( CITY(I) | FLAG(t,i) #EQ# 1:
+      @SUM( CITY(J) | FLAG(t,j) #EQ# 1: Y(i,j))) <= TOURSIZE(t) - 1;
+      );
+ENDSUBMODEL
+
+CALC:
+  @SET( 'TERSEO', 2);
+  N = @SIZE( CITY);
+  MXCUTS = @SIZE(SUBTOUR);
+ ! Initially there are no subtour cuts;
+ @FOR( SXC(t,i):
+   FLAG(t,i) = 0;
+    );
+
+   ICUT = 1;
+! Loop over subtour cuts, ICUT;
+ QUIT1 = 1;
+ @WHILE( QUIT1 : 
+!  Solve current version;
+   @SOLVE( TSP_CUT);
+!  Find subtour if any;
+   TOURSIZE(ICUT) = 0;
+!  Loop over cities KURSTOP to find subtour starting at 1;
+   KURSTOP = 1;
+   QUIT2 = 1;
+   @WHILE( QUIT2:
+!    Loop over possible next cities j;
+     @FOR(CITY(J):
+      @IFC( Y(KURSTOP, J) #GT# .5:   
+        NEXT1 = J;
+      ););!    Next j;
+      KURSTOP = NEXT1;
+      TOURSIZE(ICUT) = TOURSIZE(ICUT) + 1;
+      FLAG(ICUT,KURSTOP) = 1;
+      !@WRITE( ' Next stop= ', CITY(KURSTOP),' Tour size=',TOURSIZE(ICUT), @NEWLINE( 1));
+      @IFC( KURSTOP #EQ# 1:  ! Back home/Completed the subtour?;
+        QUIT2 = 0;
+      );
+          ); ! End loop over cities in subtour;
+   ! If subtour is in fact a full tour, or out of space, get out;
+    @IFC( TOURSIZE(ICUT) #EQ# N #OR# ICUT #GE# MXCUTS:
+       !We are done;
+       QUIT1 = 0;
+       @FOR( LINK: Y = Y); !Fix Y;
+    );
+   ! Get ready for next cut;
+    ICUT = ICUT + 1;
+    );  !End loop over add cuts;
+ENDCALC
+
+SETS:
+   LINKOPT( LINK) | Y( &1, &2) #GT# .5;
+ENDSETS
+
+CALC:
+! Give simple report;
+  @IFC( TOURSIZE(ICUT-1) #LT# N:
+    @WRITE(' Sorry, optimum not found', @NEWLINE(1));
+  @ELSE
+    KURSTOP = 1;
+    CUMDIST = 0;
+    K = 1;
+    @WRITE( 9*' ', 'Tour:    Distance:', @NEWLINE( 1));
+    @WRITE( '    1:    ',CITY( KURSTOP),'  ', 8*' ','0',@NEWLINE(1));
+    @FOR( CITY:
+!     Get next city;
+      @FOR( LINKOPT( I, J) | I #EQ# KURSTOP: 
+        NEXT = J;
+        CUMDIST = CUMDIST + DIST( I, NEXT);
+        K = K + 1;
+        @WRITE( @FORMAT( K, '5.0f'),':    ',CITY( NEXT),
+         '  ', @FORMAT( CUMDIST, '9.0f'),@NEWLINE(1));
+      );
+      KURSTOP = NEXT;
+    ); 
+  );
+ENDCALC
+END

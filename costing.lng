@@ -1,0 +1,25 @@
+model:
+
+sets:
+   projects: baths, sqft, beds, cost, est;
+endsets
+
+data:
+projects, beds, baths, sqft,    cost =
+p1          5     4    6200   559608	
+p2          2     1     820   151826	
+p3          1     1     710   125943
+p4          4     3    4300   420801	
+p5          4     2    3800   374751
+p6          3     1    2200   251674
+p7          3     2    3400   332426	
+;
+enddata
+
+min = @max( projects: @abs( cost - est));
+
+@for( projects: 
+   est = a0 + a1 * beds + a2 * baths + a3 * sqft
+);
+
+end

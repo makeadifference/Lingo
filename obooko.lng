@@ -1,0 +1,35 @@
+MODEL:
+!
+ This overbooking model determines the number of
+ reservations, M, to allow on a flight if the
+ no-show distribution is binomial;
+
+DATA:
+! Some available data ;
+   N = 16;   ! Total seats available;
+   V = 225;  ! Revenue from a sold seat;
+   P = 100;  ! Penalty for a turned down customer;
+   Q = .04;  ! Probability a customer is a no-show;
+ENDDATA
+
+CALC:
+   !Use multistart solver;
+   @SET( 'MULTIS', 5);
+ENDCALC
+
+INIT:
+   M = 10;
+ENDINIT
+
+! The probability to turn down customers is 
+  @PBINOCDF( Q, M, M - N), therefore the corresponding
+  expected loss due to imperfect information is:
+  ( V + P) * @PBINOCDF( M, Q, M - N), and we want the 
+  loss to equal the revenue V on the margin.  So,
+  the break-even equation is:;
+
+   ( V + P) * @PBINOCDF( M, Q, M - N) = V;
+
+! Note, you should round up if M is fractional;
+
+END

@@ -1,0 +1,65 @@
+MODEL:
+!Given the number of nodes and the distance between
+ them, finding the shortest total distance of links
+ on the network to connect all the nodes is the
+ classic problem called minimal spanning tree (MST).
+
+ This model finds the (MST) connecting Atlanta,
+ Chicago, Cincinnati, Houston, LA, and Montreal so
+ that messages can be sent from Atlanta (base) to
+ other cities through the network at minimum cost;
+
+  SETS:
+    CITY / 1.. 6/: U; ! U( I) = level of city I;
+                      ! U( 1) = 0;
+    LINK( CITY, CITY):
+         DIST,  ! The distance matrix;
+            X;  ! X( I, J) = 1 if we use link I, J;
+  ENDSETS
+
+  DATA:   ! Distance matrix need not be symmetric;
+          ! However, city 1 is base of the tree;
+     !to: Atl  Chi  Cin  Hou   LA  Mon ;
+   DIST =   0  702  454  842 2396 1196  !from Atl;
+          702    0  324 1093 2136  764  !from Chi;
+          454  324    0 1137 2180  798  !from Cin;
+          842 1093 1137    0 1616 1857  !from Hou;
+         2396 2136 2180 1616    0 2900  !from LA;
+         1196  764  798 1857 2900    0; !from Mon;
+  ENDDATA
+
+  ! The model size: Warning, may be slow for N >= 8;
+   N = @SIZE( CITY);
+
+  ! Minimize total distance of the links;
+   MIN = @SUM( LINK: DIST * X);
+
+  ! For city K, except the base, ... ;
+   @FOR( CITY( K)| K #GT# 1:
+
+    ! It must be entered;
+      @SUM( CITY( I)| I #NE# K: X( I, K)) = 1;
+
+    ! If there are 2 disjoint tours from 1 city to 
+      another, we can remove a link without breaking
+      connections. Note: These are not very powerful
+      for large problems;
+      @FOR( CITY( J)| J #GT# 1 #AND# J #NE# K:
+         U( J) >= U( K) + X ( K, J) -
+         ( N - 2) * ( 1 - X( K, J)) +
+         ( N - 3) * X( J, K); );
+   );
+
+  ! There must be an arc out of city 1;
+   @SUM( CITY( J)| J #GT# 1: X( 1, J)) >= 1;
+
+  ! Make the X's 0/1;
+   @FOR( LINK: @BIN( X); );
+
+  ! The level of a city except the base is at least
+    1 but no more than N-1, and is 1 if it links to
+    the base;
+    @FOR( CITY( K)| K #GT# 1:
+       @BND( 1, U( K), 999999);
+       U( K) <= N - 1 - ( N - 2) * X( 1, K);   );
+END

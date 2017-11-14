@@ -1,0 +1,25 @@
+MODEL:
+
+! Core model ---------------------------------------------------+;
+
+   [R_OBJ] MAX = PROFIT;
+
+   PROFIT = SALES - 30 * Q - DISPOSAL_COSTS - SHORTAGE_COSTS;
+ 
+   DISPOSAL_COSTS = 10 * @SMAX( Q - DEMAND, 0);
+
+   SHORTAGE_COSTS = 5 * @SMAX( DEMAND - Q, 0);
+
+   SALES = 60 * @SMIN( DEMAND, Q);
+
+! SP related declarations --------------------------------------+;
+
+   @SPSTGVAR( 0, Q);
+
+   @SPSTGRNDV( 1, DEMAND);
+
+   @SPDISTNORM( 60, 12, DEMAND);
+
+   @SPSAMPSIZE( 1, 10);
+
+END

@@ -1,0 +1,137 @@
+MODEL:
+
+! See: http://www.lehigh.edu/~jtl3/teaching/ie495/lecture3.pdf
+
+A farmer can grow wheat, corn or beans on his 500 acres of farm land.
+He requires 200 tons of wheat and 240 tons of corn to feed his cattle.
+He requires 100 tons of beans for domestic use. 
+
+He can either grow these crops or buy them from the market. Any excess
+crop can be sold in the market at $170 /ton (wheat), $150 /ton (corn)
+and $200/ton (beans).
+
+Any shortfall can be purchased from the market at $238 /ton (wheat) and 
+$210 /ton (corn) and $270 /ton (beans).
+
+The yields (in tons /acre) of the various crops depend on the weather. 
+The farmer believes that the weather can be good, fair, bad or very bad
+with equal probability. If the yield of a crop is 'y' in fair weather, then
+the variation of the yield with weather is given by:
+
+Good			1.2y
+Fair			y
+Bad			0.8y
+Very bad		0.6y
+
+The yields of the various crops under the various 
+weather scenarios are:
+
+			Wheat		Corn		Beans		
+	Good		3		3.6		24
+	Fair		2.5		3		20
+	Bad		2		2.4		16
+	Very bad	1.5		1.8		12
+
+
+The farmer has to decide how much land to allocate to each crop so as to 
+maximize his profit?
+  
+;
+
+! Core Model -------------------------------------------------------+;
+
+SETS:
+
+!   TIME: INVENTORY, COST, DEMAND, PURCHASE;
+	
+	CROPS /Wheat    Corn    Beans/	:	areaAllocated,
+								quantityRequired,
+								quantityProduced,
+
+								shortFall,
+								costPriceForShortFall,
+
+								excessQuantity,
+								sellingPriceForExcess,
+								
+								yield;
+
+	OUTCOMES	/ Good   Fair   Bad   VeryBad/;
+
+
+	CROP_OUTCOMES(OUTCOMES, CROPS)	:	o_yield;
+
+	
+ENDSETS
+
+DATA:
+
+
+	totalArea= 500;
+		
+	quantityRequired = 		200		240		0;
+
+	sellingPriceForExcess = 	170		150		36;
+
+	costPriceForShortFall =  	238		210		0;
+
+	
+	o_yield =   3    3.6    24
+                  2.5  3      20
+                  2    2.4    16
+                  1.5  1.8    12;
+
+	
+ENDDATA
+
+MAX = profit;
+
+	profit = @SUM(CROPS(c) : 
+				excessQuantity(c) *  sellingPriceForExcess(c)
+							-
+				shortFall(c) *  costPriceForShortFall(c));
+
+
+	@FOR(CROPS(c) : 
+				
+				! quantity produced depend on the yield;
+			
+				quantityProduced(c) = yield(c) * areaAllocated(c);
+
+				excessQuantity(c) <= quantityProduced(c) - quantityRequired(c);
+
+				shortFall(c) >= quantityRequired(c) - quantityProduced(c);
+		);	
+		
+	@SUM(CROPS(c): areaAllocated(c)) <= totalArea;
+
+
+
+	! The decision to allocate land to various crops is made at stage 0.
+	! The yields, which are random, are realized at stage 1.
+
+
+	
+     	!@SPSTGVAR( STAGE, VAR_REF) declares variable VAR_REF to be a 
+	stochastic/recourse variable in stage STAGE.;
+
+	! Declare 'areaAllocated' to be a recourse variable at stage 0;
+
+
+ 	@FOR(CROPS(c): 
+			@SPSTGVAR(0, areaAllocated(c));
+		);
+
+
+      !@SPSTGRNDV( STAGE, VAR_REF) declares variable VAR_REF to be a 
+	random variable in stage STAGE.;
+
+	! Declare 'yield' to be a random variable realized at stage 1;
+
+	@FOR(CROPS(c): 
+			@SPSTGRNDV(1, yield(c));
+		);
+
+	! Declare distributions and their random variables;
+ 	@SPDISTTABLE( O_YIELD, YIELD);
+END

@@ -1,0 +1,47 @@
+MODEL:
+! Data Envelope Analysis of Decision Maker Efficiency ;
+ SETS:
+  DMU/BL HW NT OP YK EL/: ! Six schools;
+     SCORE; ! Each decision making unit has a;
+            ! score to be computed;
+  FACTOR/COST RICH WRIT SCIN/;
+! There is a set of factors, input & output;
+  DXF( DMU, FACTOR):  F; ! F( I, J) = Jth factor of DMU I;
+ ENDSETS
+ DATA:
+! Inputs are spending/pupil, % not low income;
+! Outputs are Writing score and Science score;
+  NINPUTS = 2;  ! The first NINPUTS factors are inputs;
+!      The inputs,    the outputs;
+  F  =  8939  64.3     25.2   223
+        8625  99       28.2   287
+        10813 99.6     29.4   317
+        10638 96       26.4   291
+        6240  96.2     27.2   295
+        4719  79.9     25.5   222;
+ ENDDATA
+!----------------------------------------------------------;
+! The Model;
+ SETS:
+   ! Weights used to compute DMU I's score;
+   DXFXD(DMU,FACTOR) : W;
+ ENDSETS
+! Try to make everyone's score as high as possible;
+  MAX = @SUM( DMU: SCORE);
+! The LP for each DMU to get its score;
+  @FOR( DMU( I):
+   SCORE( I) = @SUM( FACTOR(J)|J #GT# NINPUTS:
+    F(I, J)* W(I, J));
+! Sum of inputs(denominator) = 1;
+   @SUM( FACTOR( J)| J #LE# NINPUTS: 
+    F( I, J)* W( I, J)) = 1;
+! Using DMU I's weights, no DMU can score better than 1;
+   @FOR( DMU( K):
+    @SUM( FACTOR( J)| J #GT# NINPUTS: F( K, J) * W( I, J))
+     <= @SUM( FACTOR( J)| J #LE# NINPUTS: 
+      F( K, J) * W( I, J))
+   )
+  );
+! The weights must be greater than zero;
+  @FOR( DXFXD( I, J): @BND( .00001, X, 100000));
+END

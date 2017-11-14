@@ -1,0 +1,30 @@
+MODEL:
+
+SETS:
+   ANALYSTS / 1..8/;
+   PAIRS( ANALYSTS, ANALYSTS) | &2 #GT# &1:
+    RATING, MATCH;
+ENDSETS
+
+DATA:
+   RATING = 
+      9  3  4  2  1  5  6
+         1  7  3  5  2  1
+            4  4  2  9  2
+               1  5  5  2
+                  8  7  6
+                     2  3
+                        4;
+ENDDATA
+
+MIN = @SUM( PAIRS( I, J): 
+ RATING( I, J) * MATCH( I, J));
+
+@FOR( ANALYSTS( I):
+ @SUM( PAIRS( J, K) | J #EQ# I #OR# K #EQ# I:
+  MATCH( J, K)) = 1 
+);
+
+@FOR( PAIRS( I, J): @BIN( MATCH( I, J)));
+
+END

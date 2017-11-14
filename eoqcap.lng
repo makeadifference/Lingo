@@ -1,0 +1,32 @@
+MODEL:
+! Production capacity constrained EOQ;
+! Demand rates for three products;
+   d1 = 400; d2 = 300; d3 = 300;
+! Production rates;
+   p1 = 1300; p2 = 1100; p3 = 900;
+! Setup costs for producing individual products;
+   sc1 = 10000; sc2 = 12000; sc3 = 13000;
+! Per unit holding costs;
+   hc1 = 1; hc2 = 1.1; hc3 = 1.4;
+!
+  The model;
+!  Single machine capacity constraint; [CAP]
+    d1 / p1 + d2 / p2 + d3 / p3
+      + 1.5 * ( d1 / q1 + d2 / q2 + d3 / q3) <= 1;
+!  Minimize setup + holding costs;
+    min = setup + holding;
+!  Total setup costs;
+    setup = (sc1 * d1 / q1) + (sc2 * d2 / q2)
+                            + (sc3 * d3 / q3);
+!  Total holding costs;
+    holding = ( hc1 * q1 * ( 1 - d1 / p1)
+              + hc2 * q2 * ( 1 - d2 / p2)
+              + hc3 * q3 * ( 1 - d3 / p3)) / 2;
+!;
+@BND( .01, Q1, 99999);
+@BND( .01, Q2, 99999);
+@BND( .01, Q3, 99999);
+@FREE( SETUP);
+@FREE( HOLDING);
+
+END

@@ -1,0 +1,101 @@
+MODEL:
+
+! Core Model -------------------------------------------+;
+
+SETS:
+   TIME;
+   ASSETS:;
+   TXA( TIME, ASSETS): RETURN, INVEST;
+ENDSETS
+
+DATA:
+   INITIAL = 55;
+   GOAL = 80;
+   PENALTY = 4;
+   TIME = T0..T3;
+   ASSETS = BONDS, STOCKS;
+ENDDATA
+
+MIN = PENALTY * UNDER - OVER;
+
+@FOR( TIME( T) | T #GT# 1:
+  @SUM( ASSETS( A): RETURN( T, A) * INVEST( T - 1, A)) =
+   @SUM( ASSETS( A): INVEST( T, A))
+);
+
+FINAL = @SUM( ASSETS( A): INVEST( @SIZE( TIME), A));
+FINAL = GOAL + OVER - UNDER;
+
+[R_INIT] @SUM( ASSETS( A): INVEST( 1, A)) = INITIAL;
+@FOR( ASSETS( A): RETURN( 1, A) = 0);
+
+! SP Related Declarations -----------------------------+;
+
+! The recourse/stochastic variables;
+@FOR( TXA( T, A): 
+   @SPSTGVAR( T-1, INVEST( T, A));
+);
+
+! Return is a random variable;
+@FOR( TXA( T, A) | T #GT# 1: 
+   @SPSTGRNDV( T - 1, RETURN( T, A));
+);
+
+! Construct the outcome table;
+SETS:
+   OUTCOMES;
+   SXA( OUTCOMES, ASSETS): O_RETURN;
+ENDSETS
+DATA:
+   OUTCOMES = GOOD, BAD;
+   O_RETURN = 
+        1.14 1.25
+        1.12 1.06 ;
+ENDDATA
+
+! Declare the parent discrete distribution;
+@SPTABLESHAPE( 'D1', @SIZE( OUTCOMES), @SIZE( ASSETS));
+
+! Load outcomes into parent;
+@FOR( OUTCOMES( O): 
+  @SPTABLEOUTC( 'D1', 1 / @SIZE( OUTCOMES));
+  @FOR( ASSETS( A): @SPTABLEOUTC( 'D1', O_RETURN( O, A)));
+);
+
+@FOR( TIME( T)  | T #GT# 1:
+   ! Declare a instance of our parent distribution;
+   @SPTABLEINST( 'D1', TIME( T));
+
+   ! Bind the random variables to the instance;
+   @FOR( ASSETS( A):
+      @SPTABLERNDV( TIME( T), RETURN( T, A))
+   );
+);
+
+CALC:
+   @SET( 'TERSEO', 1);
+   @SOLVE();
+   I = 1;
+   @WRITE( '                  Surplus     ');
+   @FOR( TIME( T) | T #GT# @INDEX( T0): @WRITE( '              ', TIME( T)));
+   @WRITE( @NEWLINE( 1));
+   @WRITE( '   Scenario        Return      Prob');
+   @FOR( TIME( T) | T #GT# @INDEX( T0): @WRITE( '    Bond   Stock'));
+   @WRITE( @NEWLINE( 1));
+   X_SURPLUS = 0;
+   @WHILE( I #LE# @SPNUMSCENE():
+      @SPLOADSCENE( I);
+      @WRITE( @FORMAT( I, '10.0f'), @FORMAT( OVER - UNDER, '15.3f'), 
+         @FORMAT( @SPPRBSCENE( I), '10.3f')
+      );
+      @FOR( TIME( T) | T #GT# @INDEX( T0): @FOR( ASSETS( A): @WRITE( '   ', 
+         @FORMAT( 100*(RETURN( T, A) - 1), '4.1f'), '%')));
+      @WRITE( @NEWLINE( 1));
+      X_SURPLUS = X_SURPLUS + @SPPRBSCENE( I) * ( OVER - UNDER);
+      I = I + 1;
+   );
+   @WRITE( @NEWLINE( 1));
+   @WRITE( '   Expected Surplus: ', @FORMAT( X_SURPLUS, '15.3f')); 
+ENDCALC
+
+END

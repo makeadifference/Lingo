@@ -1,0 +1,190 @@
+model:
+
+!Two players (X and Y) "square off" in a familiar child's game;
+
+sets:
+   dim /1..3/:;
+   board( dim, dim): score, x, y;
+! there are 8 winning combinations;
+   winners/w1..w8/: 
+      x_wins_w,   !=1 if x wins this combo;
+      y_wins_w,   !=1 if y wins this combo;
+      x_blocks_w, !=1 if x blocks y from winning this combo;
+      y_blocks_w, !=1 if y blocks x from winning this combo;
+      x_checks_w, !=1 if x checks this combo (i.e., holds two squares to y's none);
+      y_checks_w, !=1 if y checks this combo;
+      x_count_w,  !number of squares held by x in this combo;
+      y_count_w   !number of squares held by y in this combo; 
+   ;
+   wxb( winners, dim, dim) /
+! horizontal winning combos;
+     w1,1,1 w1,1,2 w1,1,3
+     w2,2,1 w2,2,2 w2,2,3
+     w3,3,1 w3,3,2 w3,3,3
+! vertical winning combos;
+     w4,1,1 w4,2,1 w4,3,1
+     w5,1,2 w5,2,2 w5,3,2
+     w6,1,3 w6,2,3 w6,3,3
+! diagonal winners;
+     w7,1,1 w7,2,2 w7,3,3
+     w8,1,3 w8,2,2 w8,3,1
+   /:; 
+endsets
+
+calc:
+! the value of each square on the grid is set to the number
+  of winning combos it appears in;
+  @for( board: score = 0);
+  @for( wxb( w, i, j): score( i, j) = score( i, j) + 1);
+endcalc
+
+! The primary objective is to win, followed by blocking, followed by checking,
+  followed by maximizing the raw score of squares held;
+! Note: set some of the obj coefficients to 0 to allow a player to "beat"
+  a handicapped opponent;
+max = 
+   ( 10000 * x_wins + 1000 * x_blocks + 100 * x_checks + x_score) * x_wt +
+   ( 10000 * y_wins + 1000 * y_blocks + 100 * y_checks + y_score) * y_wt
+;
+
+! can only have one player on a square;
+@for( board: x + y <= 1);
+
+! each player gets one square per turn;
+@sum( board: x) = x_turns;
+@sum( board: y) = y_turns;
+
+! a player wins if he has three squares in a row;
+@for( winners( w): @for( wxb( w, i, j):
+   x_wins_w( w) <= x( i, j);
+   y_wins_w( w) <= y( i, j);
+));
+! sum up total wins for each player;
+x_wins = @sum( winners: x_wins_w);
+y_wins = @sum( winners: y_wins_w);
+
+! count how many squares each player holds in each winning combo;
+@for( winners( w):
+   x_count_w( w) = @sum( wxb( w, i, j): x( i, j));
+   y_count_w( w) = @sum( wxb( w, i, j): y( i, j));
+);
+
+! a player blocks if he spoils an opponent's winning combination;
+@for( winners:
+   ! x blocks y if x holds one square and y holds 2;
+   2 * x_blocks_w <= y_count_w;
+   y_count_w <= 3 - x_blocks_w;
+   x_blocks_w <= x_count_w;
+   x_count_w <= 3 - 2 * x_blocks_w;
+   ! y blocks x if y holds one square and x holds 2;
+   2 * y_blocks_w <= x_count_w;
+   x_count_w <= 3 - y_blocks_w;
+   y_blocks_w <= y_count_w;
+   y_count_w <= 3 - 2 * y_blocks_w;
+);
+! sum up total blocks for each player;
+x_blocks = @sum( winners: x_blocks_w);
+y_blocks = @sum( winners: y_blocks_w);
+
+! a player checks a winning combination if he holds two squares
+  versus his opponent's none;
+@for( winners:
+   ! x checks combo?;
+   2 * x_checks_w <= x_count_w;
+   x_count_w <= 3 - x_checks_w;
+   y_count_w <= 3 - 3 * x_checks_w;
+   ! y checks combo?;
+   2 * y_checks_w <= y_count_w;
+   y_count_w <= 3 - y_checks_w;
+   x_count_w <= 3 - 3 * y_checks_w;
+);
+! sum up total checks for each player;
+x_checks = @sum( winners: x_checks_w);
+y_checks = @sum( winners: y_checks_w);
+
+! compute the raw score of squares held by each player;
+x_score = @sum( board: score * x);
+y_score = @sum( board: score * y);
+
+! binaries;
+@for( board: @bin( x); @bin( y));
+@for( winners: @bin( x_blocks_w); @bin( y_blocks_w));
+@for( winners: @bin( x_checks_w); @bin( y_checks_w));
+
+init:
+   x_wins = 0;
+   y_wins = 0;
+endinit
+
+calc:
+
+   ! Set patameters;
+   @set( 'DEFAULT');
+   @set( 'OROUTE', 1);
+   @set( 'TERSEO', 2);
+   @set( 'WNLINE', 10000);
+   @set( 'LINLEN', 150);
+   @set( 'STAWIN', 0);   
+
+   ! no turns taken yet;
+   x_turns = 0;
+   y_turns = 0;
+
+   ! let's play;
+   @for( board | x_wins #lt# 1 #and# y_wins #lt# 1 #and#
+    ( x_turns + y_turns) #lt# @size( board):
+
+      ! x moves first;
+      x_turns = x_turns + 1;
+      x_wt = 1; y_wt = 1 - x_wt;
+      @solve();
+
+      ! fix all of x's moves;
+      @for( board: 
+         @ifc( x:
+            x = 1;
+         );
+      );
+
+      ! Display the board;
+         @write( @newline(1), "Board #", x_turns + y_turns,":", @newline( 1));
+         @for( board( i, j): 
+            @write( 
+               3*" ", @if( x, "X", @if ( y, "O", ".")), 
+               @if( j #eq# @size( dim), @newline( 1), "")
+            );
+         );
+
+      ! y moves next;
+      @ifc( x_wins #lt# 1 #and# x_turns + y_turns #lt# @size( board):
+         y_turns = y_turns + 1;
+         x_wt = 0; y_wt = 1 - x_wt;
+         @solve();
+
+         !fix all y's moves;
+         @for( board:
+            @ifc( y:
+               y = 1;
+            );
+         );
+
+      ! Display the board;
+         @write( @newline(1), "Board #", x_turns + y_turns,":", @newline( 1));
+         @for( board( i, j): 
+            @write( 
+               3*" ", @if( x, "X", @if ( y, "O", ".")), 
+               @if( j #eq# @size( dim), @newline( 1), "")
+            );
+         );
+ 
+      );
+   );
+
+   @write( @newline( 1));
+   @write( @if( x_wins, "!!!X WINS!!!", @if( y_wins, "!!!Y WINS!!!", "")));
+   @write( @if( x_turns + y_turns #eq# @size( board) #and#
+    x_wins #lt# 1 #and# y_wins #lt# 1, "!!!CAT...NO WINNER!!!",""));   
+   @write( @newline( 1));
+
+endcalc
+end

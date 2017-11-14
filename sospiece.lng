@@ -1,0 +1,41 @@
+MODEL:
+
+! Demonstrates the lambda method for
+  representing arbitrary, piecewise-linear
+  curves using an SOS2 set;
+
+! See "Optimization Modeling with Lingo",
+  Section 11.2.7;
+
+SETS:
+   ! 4 breakpoints in this example;
+   B /1..4/: W, U, V;
+ENDSETS
+
+DATA:
+   ! total cost at the breakpoints;
+   V = 22 10 41 49;
+
+   ! the breakpoints;
+   U =  0  5 12 20;
+ENDDATA
+
+   ! set x to any value in interval--the cost 
+     variable will automatically be set to the
+     correct total cost;
+   X = 8.5;   
+  
+   ! calculate total cost;
+   COST = @SUM( B( i): V( i) * W( i));
+
+   ! force the weights (w);
+   X  = @SUM( B( I): U( I) * W( i));
+
+   ! weights must sum to 1;
+   @SUM( B( I): W( I)) = 1;
+
+   ! the weights are SOS2: at most two adjacent 
+     weights can be nonzero; 
+   @FOR( B( I): @SOS2( 'SOS2_SET', W( I)));
+
+END

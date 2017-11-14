@@ -1,0 +1,28 @@
+ MODEL:
+  ! Model of a computer timesharing system;
+  ! The mean think time for each user (more 
+    generally, Mean Time Between Failures in a
+    repair system);
+    MTBF = 40;
+  ! The mean time to process each compute request
+    (more generally, Mean Time To Repair in 
+    seconds);
+    MTTR =  2;
+  ! The number of users;
+    NUSER = 32;
+  ! The number of servers/repairmen;
+    NREPR = 1;
+  ! The mean number of users waiting or in service
+    (more generally, the mean number of machines
+    down);
+    NDOWN = 
+     @PFS( MTTR * NUSER/ MTBF, NREPR, NUSER);
+  ! The overall request for service rate (more
+    generally, overall failure rate), FR, must 
+    satisfy;
+    FR = ( NUSER - NDOWN)/ MTBF;
+  ! The mean time waiting for or in service (more
+    generally, the mean time down), MTD, must 
+    satisfy;
+    NDOWN = FR * MTD;
+ END

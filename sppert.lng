@@ -1,0 +1,142 @@
+MODEL:
+
+! A PERT stochastic programming example where
+  the task completion times are normally distributed;
+
+SETS:
+   TASKS: TIME, AVG_TIME, STD_DEV, ES, LS, SLACK, 
+    SOL_AVG_TIME, SOL_MIN_TIME, SOL_MAX_TIME, SOL_AVG_SLACK;
+   PRED( TASKS, TASKS): Z;
+ENDSETS
+
+DATA:
+
+   ! Tasks and their average times and
+     standard deviations;
+   TASKS,  AVG_TIME, STD_DEV =
+    Design    10       1.5
+    Forecast  14       2.7
+    Survey     3       0.3
+    Price      3       0.2
+    Schedule   7       1.1
+    Costout    4       0.8
+    Train     10       2.2
+   ;
+   
+   ! Predecessor relationships;
+   PRED =
+    Design      Forecast
+    Design      Survey
+    Forecast    Price
+    Forecast    Schedule
+    Survey      Price
+    Schedule    Costout
+    Price       Train
+    Costout     Train
+   ;
+
+ENDDATA
+
+SUBMODEL PERT:
+
+! Core model ------------------------------------------------+;
+
+   ! Minimize total completion time; 
+   [R_OBJ] MIN = COMPLETION_TIME;
+ 
+   ! Compute completion time;
+   LTASK = @SIZE( TASKS);
+   COMPLETION_TIME = ES( LTASK) + TIME( LTASK);
+
+   ! Compute earliest starts times;
+   @FOR( TASKS( J)| J #GT# 1:
+    ES( J) = @MAX( PRED( I, J): ES( I) + TIME( I))
+   );
+
+
+   @FOR( TASKS( I)| I #LT# LTASK:
+    LS( I) = @MIN( PRED( I, J): LS( J) - TIME( I));
+   );
+
+   @FOR( TASKS( I): SLACK( I) = LS( I) - ES( I));
+
+
+! SP related declarations --------------------------------------+;
+ 
+   ! Assign the distributions to the random variables;
+   @FOR( TASKS( I): 
+      @SPSTGRNDV( 1, TIME( I));
+      @SPDISTNORM( AVG_TIME( I), STD_DEV( I), TIME( I));
+   ); 
+   @SPSAMPSIZE( 1, 100);
+
+   ! Must assign at least one variable to stage 0;
+   ! We will use a dummy variable given that we have
+     no initial decision variables.;
+   DUMMY < 1;
+   @SPSTGVAR( 0, DUMMY);  
+
+ENDSUBMODEL
+
+CALC:
+
+   ! Default options;
+   @SET( 'DEFAULT');
+   ! Suppress default output;   
+   @SET( 'TERSEO', 2);
+   ! @MAX/MIN makes model nonlinear.
+     Global solver will linearize @MAX/MIN;
+   @SET( 'GLOBAL', 1);
+
+   ! Solve the SP;
+   @SOLVE( PERT);
+
+   @FOR( TASKS( I):
+      SOL_AVG_TIME( I) = 0;
+      SOL_MIN_TIME( I) = 1.E10;
+      SOL_MAX_TIME( I) = -1;
+      SOL_AVG_SLACK( I) = 0;
+   );
+
+   S = 0;
+   MAX_COMPLETION = -1;
+   MIN_COMPLETION = 1.E10;
+   AVG_COMPLETION = 0;
+
+   @WHILE( S #LT# @SPNUMSCENE():
+      S = S + 1;
+      @SPLOADSCENE( S);
+
+      MAX_COMPLETION = @SMAX( MAX_COMPLETION, COMPLETION_TIME);
+      MIN_COMPLETION = @SMIN( MIN_COMPLETION, COMPLETION_TIME);
+      AVG_COMPLETION = AVG_COMPLETION + COMPLETION_TIME / @SPNUMSCENE();
+
+      @FOR( TASKS( I):
+         SOL_AVG_TIME( I) = SOL_AVG_TIME( I) + TIME( I) /  @SPNUMSCENE();
+         SOL_MIN_TIME( I) = @SMIN( SOL_MIN_TIME( I), TIME( I));
+         SOL_MAX_TIME( I) = @SMAX( SOL_MAX_TIME( I), TIME( I));
+         SOL_AVG_SLACK( I) = SOL_AVG_SLACK( I) + SLACK( I) /  @SPNUMSCENE();
+      );
+   );
+
+   @WRITE( 'Average  Completion Time: ', 
+    @FORMAT( AVG_COMPLETION, '12.2f'), @NEWLINE( 1));
+   @WRITE( 'Shortest Completion Time: ', 
+    @FORMAT( MIN_COMPLETION, '12.2f'), @NEWLINE( 1));
+   @WRITE( 'Longest  Completion Time: ', 
+    @FORMAT( MAX_COMPLETION, '12.2f'), @NEWLINE( 2));
+
+   @WRITE( '      Task          AvgTime    MinTime    MaxTime    AvgSlack',
+       @NEWLINE( 1), 61*'=', @NEWLINE( 1));
+       @FOR( TASKS( I):
+          @WRITE( 
+             @FORMAT( TASKS( I), '12s'), '   ', 
+             @FORMAT( SOL_AVG_TIME( I), '11.2f'),
+             @FORMAT( SOL_MIN_TIME( I), '11.2f'),
+             @FORMAT( SOL_MAX_TIME( I), '11.2f'),
+             @FORMAT( SOL_AVG_SLACK( I), '11.2f'),
+             @NEWLINE( 1)
+       );
+    );
+ENDCALC
+END

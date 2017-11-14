@@ -1,0 +1,39 @@
+MODEL:
+! A 3 Warehouse, 4 Customer 
+   Transportation Problem;
+SETS:
+   WAREHOUSE    : CAPACITY;
+   CUSTOMER     : DEMAND;
+   ROUTES( WAREHOUSE, CUSTOMER) : COST, VOLUME;
+ENDSETS
+
+DATA:
+   CUSTOMER = C1 C2 C3 C4;
+
+   !Here we use the data frame style of input,
+   where we simutaneously input the first primitive
+   set (WAREHOUSE) of a two dimensional set (ROUTES)
+   along with an attribute of the set (COST);
+   WAREHOUSE, COST =
+          W1   6  2  6  7
+          W2   4  9  5  3
+          W3   8  8  1  5
+   ;
+   CAPACITY =   30, 25, 21;
+   DEMAND   = 15 17 22 12;
+ENDDATA
+
+! The objective;
+ [OBJ] MIN = @SUM( ROUTES: COST * VOLUME);
+
+! The demand constraints;
+ @FOR( CUSTOMER( J): [DEM]
+  @SUM( WAREHOUSE( I): VOLUME( I, J)) >= 
+   DEMAND( J));
+
+! The supply constraints;
+ @FOR( WAREHOUSE( I): [SUP]
+  @SUM( CUSTOMER( J): VOLUME( I, J)) <= 
+   CAPACITY( I));
+
+END

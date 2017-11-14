@@ -1,0 +1,28 @@
+MODEL:
+
+SETS:
+   ITEMS: INCLUDE, WEIGHT, RATING;
+ENDSETS
+
+DATA:
+   ITEMS          WEIGHT RATING =
+    ANT_REPEL        1      2
+    BEER             3      9
+    BLANKET          4      3
+    BRATWURST        3      8
+    BROWNIES         3     10
+    FRISBEE          1      6
+    SALAD            5      4
+    WATERMELON      10     10;
+
+   KNAPSACK_CAPACITY = 15;
+ENDDATA
+
+MAX = @SUM( ITEMS: RATING * INCLUDE);
+
+@SUM( ITEMS: WEIGHT * INCLUDE) <= 
+ KNAPSACK_CAPACITY;
+
+@FOR( ITEMS: @BIN( INCLUDE));
+
+END

@@ -1,0 +1,39 @@
+ MODEL:
+ ! Capacitated Plant Location Problem;
+ SETS:
+    PLANTS / P1, P2, P3/: FCOST, CAP, OPEN;
+    CUSTOMERS / C1, C2, C3, C4/ : DEM;
+    ARCS( PLANTS, CUSTOMERS)  : COST, VOL;
+ ENDSETS
+
+ DATA:
+  ! Fixed cost of opening at each origin;
+       FCOST = 91, 70, 24;
+  ! Capacities at each origin;
+       CAP =   39, 35, 31;
+  ! Demands at each destination;
+       DEM =   15, 17, 22, 12;
+  ! The cost/unit shipment matrix;
+       COST =   6,  2,  6,  7,
+                4,  9,  5,  3,
+                8,  8,  1,  5;
+ ENDDATA
+
+ ! The objective;
+    [TTL_COST] MIN = @SUM( ARCS: COST * VOL) +
+     @SUM( PLANTS: FCOST * OPEN);
+
+ ! The demand constraints;
+    @FOR( CUSTOMERS( J): [DEMAND]
+     @SUM( PLANTS( I): VOL( I, J)) >= DEM( J)
+    );
+
+ ! The supply constraints;
+    @FOR( PLANTS( I): [SUPPLY]
+     @SUM( CUSTOMERS( J): VOL( I, J)) <= 
+      CAP( I) * OPEN( I)
+    );
+
+ ! Make OPEN binary(0/1);
+    @FOR( PLANTS: @BIN( OPEN));
+ END

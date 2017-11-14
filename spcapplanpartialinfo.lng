@@ -1,0 +1,105 @@
+MODEL:   ! LINGO (www.lindo.com) Stochastic Program model for...;
+ ! (The Generic) Capacity Planning under Uncertainty problem
+ with partial revelation of demand.							
+Stage 0: We decide what inventory or capacity to place at each supply point.
+Stage 1, Beginning: Demand1 (advance orders) is revealed at each demand point,							
+Stage 1, End: We reposition inventory from supply points to demand points,
+Stage 2, Beginning: Total demand is revealed at each demand point,
+Stage 2, End: We sell as much at each demand point as demand and
+         available supply at the demand point allow;	
+
+SETS:
+   SPOINT: COSTPU, X, ULIM;
+   DPOINT: DEMAND1, DEMAND2, MU1, SD1, MU2, SD2, SELL, SPRICE;
+   SXD( SPOINT, DPOINT): TC, Y;
+ ! Scenario stuff;
+   SCENE: PROB;
+   SCXD( SCENE, DPOINT): RDEM;
+ENDSETS
+
+DATA:
+ ! Variant of the Sport Obermeyer, Accurate Response problem;
+ ! The stock levels and capacities we can set early in season;
+   SPOINT = SANITA SDAPHNE SELECTRA SGENERIC; ! 4 supply points;
+    COSTPU=   80     90       65      5; ! Cost per unit to commit;
+    ULIM  = 9999   9999     9999    150; ! Upper limit;
+   DPOINT = DANITA DDAPHNE DELECTRA ;  ! 3 demand points;
+   SPRICE =  180    160      140;  ! Selling price at each demand point;
+!  Cost/unit for shipping from supply point i
+    to demand point j;
+        TC =   0    999      999
+             999      0      999
+             999    999        0
+              90     90       80; ! From Generic;
+ ! The stochastic data. Mean and SD for stage 1 and
+      stage 2 demand;
+        MU1 =  84     93      111;
+        SD1 =  31     23       49;
+        MU2 = 255    281      335;
+        SD2 =  97     41       85;
+      NSAMP = 30;  ! Sample size for each stage;
+ENDDATA
+
+					
+!Step 1: Core Model;			
+! Cannot stock or install more (in stage 0) at supply point i than
+  its upper limit;
+ @FOR( SPOINT(i): [R_CAP]
+     X(i) <= ULIM(i);
+    );
+
+! Shipment constraints.  Cannot ship more from supply point i
+  in stage 1 than was placed there in stage 0;
+ @FOR( SPOINT(i): [R1_SUP]
+    @SUM( DPOINT( j): Y(i,j)) <= X(i);
+);
+
+! Demand constraints,
+   Cannot sell more in stage 2 than demanded;
+@FOR( DPOINT(j): [R_DEM]
+ ! SELL( j) <= DEMAND1(j) + DEMAND2(j);
+  SELL( j) <= @SMAX(0,DEMAND1(j) + DEMAND2(j)); ! Beware Normal deviates < 0;
+  ! @SUM( SPOINT( i): Y(i,j)) <= @SMAX((0, DEMAND1(j)+ DEMAND2(j));
+);
+
+! Supply constraints,
+   Cannot sell more in stage 2 than stocked at i;
+@FOR( DPOINT(j): [R2_SUP]
+   SELL( j) <= @SUM( SPOINT(i): Y(i,j));
+    );
+
+! Maximize revenue - costs;
+[R_OBJ] MAX = @SUM( DPOINT(j): SPRICE(j)*SELL(j)) ! Revenue;
+            - @SUM( SXD(i,j):  TC(i,j)*Y(i,j))    ! Shipment costs;
+            - @SUM( SPOINT(i): COSTPU(i)*X(i));   ! Initial purchase;
+
+! SP Declarations ----------------------------------+;
+!  Step 2, provide staging information;
+!   Stage 0 decision variables;
+  @FOR( SPOINT( i): @SPSTGVAR( 0, X( i)));
+
+! Demand1 and Demand2 are random variables
+   at the beginning of stages 1 and 2;
+  @FOR( DPOINT(j): 
+    @SPSTGRNDV( 1, DEMAND1( j)); 
+    @SPSTGRNDV( 2, DEMAND2( j));
+     ); 
+
+! The Y shipment variables are decision variables at end of stage 1;
+  @FOR( SXD(i,j): @SPSTGVAR( 1, Y(i,j))); 
+! The SELL variables are stage 2 decision variables;
+  @FOR( DPOINT(j): @SPSTGVAR( 2, SELL( j));
+     ); 
+
+
+! Step 3, provide probabilistic info;
+! Declare the distributions and their random variables; 
+ @FOR( DPOINT(j): 
+  @SPDISTNORM( MU1(j), SD1(j), DEMAND1(j));
+  @SPDISTNORM( MU2(j), SD2(j), DEMAND2(j));
+    );
+
+! Set the sample size for each stage;
+ @SPSAMPSIZE( 1, NSAMP);
+ @SPSAMPSIZE( 2, NSAMP);
+END

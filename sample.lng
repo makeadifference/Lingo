@@ -1,0 +1,54 @@
+MODEL:
+
+ ! Acceptance sampling: taking one or more samples
+   at random from a lot, inspecting each of the 
+   items in the sample(s), and deciding on the basis
+   of inspection results whether to accept or reject
+   the entire lot. (See Schroeder, Oper. Mgt.) This 
+   Acceptance Sampling model illustrates the effect
+   of choice of distribution.;
+
+ ! From a lot of 400 items;
+  LOTSIZE = 400;
+ ! We take a sample of size 100;
+  SAMPSIZE = 100;
+ ! Producer considers the lot good if
+    the lot fraction defective is .0075 or less;
+  FGOOD = .0075;
+ ! Consumer considers the lot bad if
+    the lot fraction defective is .025 or more;
+  FBAD = .025;
+ ! We accept the lot if sample contains 2 or less;
+  ACCEPTAT = 2;
+
+! The model;
+ ! What is producer risk of rejecting a good lot;
+   ! Using the (exact) hypergeometric distribution;
+  PGOODH = 1 - @PHG( LOTSIZE, LOTSIZE * FGOOD, 
+   SAMPSIZE, ACCEPTAT);
+   ! Using binomial approx. to the hypergeometric;
+  PGOODB = 1 - @PBN( FGOOD, SAMPSIZE, ACCEPTAT);
+   ! Using the Poisson approx. to the binomial;
+  PGOODP = 1 - @PPS( FGOOD * SAMPSIZE, ACCEPTAT);
+   ! Using Normal approximation;
+  PGOODN = 
+   1 - @PSN( (ACCEPTAT + .5 - MUG) / SIGMAG);
+   ! where;
+  MUG = SAMPSIZE * FGOOD;
+  SIGMAG = ( MUG * ( 1 - FGOOD)) ^ .5;
+
+ ! What is the consumer risk of accepting a bad lot;
+   ! Using the hypergeometric;
+  PBADH = @PHG( LOTSIZE, LOTSIZE * FBAD, 
+   SAMPSIZE, ACCEPTAT);
+   ! Binomial;
+  PBADB = @PBN( FBAD, SAMPSIZE, ACCEPTAT);
+   ! Poisson;
+  PBADP = @PPS( FBAD * SAMPSIZE, ACCEPTAT);
+   ! Using Normal approximation;
+  PBADN = @PSN( ( ACCEPTAT + .5 - MUB) / SIGMAB);
+  ! where;
+  MUB = SAMPSIZE * FBAD;
+  SIGMAB = ( MUB * ( 1 - FBAD)) ^ .5;
+
+END

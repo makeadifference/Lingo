@@ -1,0 +1,42 @@
+MODEL:
+
+! Uses a loop to solve three staff scheduling models,
+  retrieving the data from and writing the solution to
+  text files;
+
+SETS:
+  SITES / PLUTO MARS SATURN/;
+  DAYS / MON TUE WED THU FRI SAT SUN/: NEEDS, START, ONDUTY;
+ENDSETS
+
+SUBMODEL STAFF:
+  [OBJROW] MIN = @SUM( DAYS: START);
+
+  @FOR( DAYS( D):
+     ONDUTY( D) = @SUM( DAYS( D2) | D2 #LE# 5: 
+       START( @WRAP( D - D2 + 1, @SIZE( DAYS))));
+     ONDUTY( D) >= NEEDS( D);
+  );
+
+  @FOR( DAYS: @GIN( START));
+ENDSUBMODEL
+
+CALC:
+  @SET( 'TERSEO', 2);
+
+  @FOR( SITES( S):
+     NEEDS = @TEXT( SITES( S) + 'NEEDS.ldt');
+
+     @SOLVE( STAFF);
+
+     @SOLU( 0, '  On Duty Report: ' + SITES( S), ONDUTY);
+
+     @DIVERT( 'START' + SITES( S) + '.txt');
+     @WRITE( 'Staffing report for: ', SITES( S), @newline( 1));
+     @WRITE( ' Day', 10*' ', 'Start', 11*' ', 'On Duty', @newline( 1));
+     @TEXT() = DAYS, START, ONDUTY;
+     @DIVERT();
+  );
+ENDCALC
+
+END

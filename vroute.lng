@@ -1,0 +1,95 @@
+MODEL:
+
+! The Vehicle Routing Problem (VRP); 
+
+!************************************;
+! WARNING: Runtimes for this model   ;
+! increase dramatically as the number;
+! of cities increase. Formulations   ;
+! with more than a dozen cities      ;
+! WILL NOT SOLVE in a reasonable     ;
+! amount of time!                    ;
+!************************************;
+
+ SETS:
+  ! Q(I) is the amount required at city I,
+    U(I) is the accumulated delivers at city I ;
+   CITY/1..8/: Q, U;
+
+  ! DIST(I,J) is the distance from city I to city J
+    X(I,J) is 0-1 variable: It is 1 if some vehicle
+    travels from city I to J, 0 if none;
+   CXC( CITY, CITY): DIST, X;
+ ENDSETS
+
+ DATA:
+  ! city 1 represent the common depo;
+   Q  =  0    6    3    7    7   18    4    5;
+
+  ! distance from city I to city J is same from city
+    J to city I distance from city I to the depot is
+    0, since the vehicle has to return to the depot;
+
+   DIST =  ! To City;
+  ! Chi  Den Frsn Hous   KC   LA Oakl Anah   From;
+      0  996 2162 1067  499 2054 2134 2050!Chicago;
+      0    0 1167 1019  596 1059 1227 1055!Denver;
+      0 1167    0 1747 1723  214  168  250!Fresno;
+      0 1019 1747    0  710 1538 1904 1528!Houston;
+      0  596 1723  710    0 1589 1827 1579!K. City;
+      0 1059  214 1538 1589    0  371   36!L. A.;
+      0 1227  168 1904 1827  371    0  407!Oakland;
+      0 1055  250 1528 1579   36  407    0;!Anaheim;
+
+  ! VCAP is the capacity of a vehicle ;
+   VCAP = 18;
+ ENDDATA
+
+  ! Minimize total travel distance;
+   MIN = @SUM( CXC: DIST * X);
+
+  ! For each city, except depot....;
+   @FOR( CITY( K)| K #GT# 1:
+
+  ! a vehicle does not traval inside itself,...;
+     X( K, K) = 0;
+
+  ! a vehicle must enter it,... ;
+     @SUM( CITY( I)| I #NE# K #AND# ( I #EQ# 1 #OR#
+      Q( I) + Q( K) #LE# VCAP): X( I, K)) = 1;
+
+  ! a vehicle must leave it after service ;
+     @SUM( CITY( J)| J #NE# K #AND# ( J #EQ# 1 #OR#
+      Q( J) + Q( K) #LE# VCAP): X( K, J)) = 1;
+
+  ! U( K) is at least amount needed at K but can't 
+    exceed capacity;
+     @BND( Q( K), U( K), VCAP);
+
+  ! If K follows I, then can bound U( K) - U( I);
+     @FOR( CITY( I)| I #NE# K #AND# I #NE# 1: 
+      U( K) >= U( I) + Q( K) - VCAP + VCAP * 
+       ( X( K, I) + X( I, K)) - ( Q( K) + Q( I))
+        * X( K, I);
+     );
+
+  ! If K is 1st stop, then U( K) = Q( K);
+     U( K) <= VCAP - ( VCAP - Q( K)) * X( 1, K);
+
+  ! If K is not 1st stop...;
+     U( K)>= Q( K)+ @SUM( CITY( I)| 
+      I #GT# 1: Q( I) * X( I, K));
+   );
+
+  ! Make the X's binary;
+   @FOR( CXC: @BIN( X));
+
+  ! Minimum no. vehicles required, fractional 
+    and rounded;
+   VEHCLF = @SUM( CITY( I)| I #GT# 1: Q( I))/ VCAP;
+   VEHCLR = VEHCLF + 1.999 - 
+    @WRAP( VEHCLF - .001, 1);
+
+  ! Must send enough vehicles out of depot;
+   @SUM( CITY( J)| J #GT# 1: X( 1, J)) >= VEHCLR;
+ END

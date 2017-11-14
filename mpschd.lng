@@ -1,0 +1,88 @@
+MODEL:
+! Multiproduct Capacitated lot sizing;
+ SETS:
+  PROD/1..2/: ! Each product has a ...;
+   ST,   ! Setup time;
+   VT,   ! Production time per unit;
+   SC,   ! Setup cost;
+   VC,   ! Production cost per unit;
+   HC;   ! Holding cost per unit per period;
+  TIME/1..6/:;
+  PXT( PROD, TIME):
+! Each product in each period has...;
+   DEM,  ! Demand;
+   MAKE, ! Amount to produce;
+   Y;    ! = 1 if anything is produced;
+ ENDSETS
+ DATA:
+  CAP = 200;     ! Capacity per period;
+  ST = 0  0;     ! Setup times;
+  VT = 1  1;     ! Production time per unit;
+  SC = 150  45;  ! Setup costs;
+  VC =  7  4;    ! Cost per unit to produce;
+  HC =  2  1;    ! Holding cost per unit;
+  DEM =  40  60 130   0 100 200  ! Demands;
+          0  45  50  35  20  35;
+ ENDDATA
+
+!------------------------------------;
+!  The Eppen/Martin model;
+ SETS:
+  PXTXT( PROD, TIME, TIME)| &3 #GE# &2:
+   PCOF,
+   CCOF,
+   X;
+ ENDSETS
+! Compute cost and production amounts for
+  various production runs;
+ @FOR( PROD( I):
+  @FOR( TIME( S):
+   PCOF( I, S, S) = DEM( I, S);
+   CCOF( I, S, S) = VC( I) * DEM( I, S);
+   @FOR( TIME( T)| T #GT# S:
+    PCOF( I, S, T) = PCOF( I, S, T - 1) +
+     DEM( I, T);
+    CCOF( I, S, T) = CCOF( I, S, T - 1) +
+    ( VC( I) + HC( I) * ( T - S)) * DEM( I, T);
+   )
+  )
+ );
+
+! The objective;
+  MIN = TCOST;
+  TCOST = @SUM( PXTXT: CCOF * X) +
+   @SUM( PXT( I, S): SC( I) * Y( I, S));
+
+  @FOR( PROD( I):
+! In period 1, some production run must be started;
+!  Note, watch out for periods without demand;
+   @SUM( PXTXT( I, S, T) | S #EQ# 1:
+    X( I, S, T)) = 1;
+   @FOR( TIME( K)| K #GT# 1:
+!  If we ended a run in period K - 1...;
+    @SUM( PXTXT( I, S, T)| T #EQ# K - 1:
+     X( I, S, K - 1))
+!  then we must start a run in period k;
+      = @SUM( PXTXT( I, K, T): X( I, K, T));
+   );
+! Setup forcing;
+   @FOR( TIME( S):
+    Y( I, S) =  @SUM( PXTXT( I, S, T)
+     : ( PCOF( I, S, T) #GT# 0) * X( I, S, T));
+! Calc amount made each period;
+    MAKE( I, S) = @SUM( PXTXT( I, S, T):
+     PCOF( I, S, T) * X( I, S, T)) 
+   )
+  );
+
+! The capacity constraints;
+  @FOR( TIME( S):
+   @SUM( PROD( I): ST( I) * Y( I, S)) +
+    @SUM( PXTXT( I, S, T):
+     VT( I) * PCOF( I, S, T) * X( I, S, T)) <= CAP
+  );
+
+! Make the Y's integer;
+  @FOR( PXT: @GIN( Y));
+
+END

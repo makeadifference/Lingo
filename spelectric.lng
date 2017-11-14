@@ -1,0 +1,68 @@
+MODEL:
+
+SETS:
+   PLANTS: COST, CAPACITY, SHIPPED, AVAILABLE;
+ENDSETS
+
+DATA:
+   DEMAND = 460;
+   PLANTS,      COST, CAPACITY = 
+     A          19.0    160
+     B          18.6    300
+     C           8.8    450
+     PENALTY  9999.0   1.E6
+   ;
+ENDDATA
+
+MIN = @SUM( PLANTS( P): SHIPPED( P) * COST( P));
+
+@SUM( PLANTS( P): SHIPPED( P)) >= DEMAND;
+
+@FOR( PLANTS( P): SHIPPED( P) <= CAPACITY( P) * AVAILABLE( P));
+
+! SP related declarations;
+
+! The recourse/stochastic variables;
+@FOR( PLANTS( P): 
+   @SPSTGVAR( 1, SHIPPED( P));
+);
+@SPSTGVAR( 0, DUMMY);
+
+! AVAILABLE is the random variable;
+@FOR( PLANTS( P): 
+   @SPSTGRNDV( 1, AVAILABLE( P));
+);
+
+! Construct the outcome table;
+SETS:
+   OUTCOMES: PROB;
+   OXP( OUTCOMES, PLANTS): O_AVAILABLE;
+ENDSETS
+DATA:
+   OUTCOMES, PROB = 
+	1	0.000125
+	2	0.002375
+	3	0.045125
+	4	0.857375
+	5	0.045125
+	6	0.002375
+	7	0.002375
+	8	0.045125;
+   O_AVAILABLE =
+	0	0	0	1
+	0	0	1	1
+	0	1	1	1
+	1	1	1	1
+	1	0	1	1
+	1	0	0	1
+	0	1	0	1
+	1	1	0	1;
+ENDDATA
+
+! Declare the distributions and their random variables;
+@SPDISTTABLE( O_AVAILABLE, AVAILABLE, PROB);
+
+! Set the sample size;
+@SPSAMPSIZE( 1, 8);
+
+END

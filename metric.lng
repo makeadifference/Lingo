@@ -1,0 +1,33 @@
+ MODEL:
+! The two level METRIC inventory model. ;
+ SETS:
+  OUTLET/1..2/: ! Each outlet has a...;
+   ROUTLET,  ! Resupply time from depot to outlet;
+   DEM,      ! Demand rate at outlet;
+   SOUTLET,  ! Stock level to use at outlet;
+   ERT,      ! Effective resupply time to outlet;
+   AL;       ! Average level of backlogged demand;
+ ENDSETS
+ DATA:
+  ROUTLET =  2   2;
+  DEM =     .1  .1;
+  RDEPOT = 14;
+!  Get the stock levels from the user;
+  SDEPOT = ?;
+  SOUTLET = ?, ?;
+ ENDDATA
+
+! Compute total demand;
+   DEM0 = @SUM( OUTLET: DEM);
+! Effective expected wait at depot;
+   EWT0 = @PPL( DEM0 * RDEPOT, SDEPOT)/ DEM0;
+  @FOR( OUTLET( I):
+! Estimate the resupply time including depot delay;
+    ERT( I) = ROUTLET( I) + EWT0;
+! Expected demand on backorder;
+    AL( I) = @PPL( DEM( I) * ERT( I), SOUTLET( I));
+  );
+! Total expected demand on backorder;
+  TBACK = @SUM( OUTLET: AL);
+
+END

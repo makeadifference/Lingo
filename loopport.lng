@@ -1,0 +1,179 @@
+MODEL:
+! Solves the generic Markowitz portfolio
+  model in a loop to generate the points
+  on the efficient frontier;
+SETS:
+   ASSET: RATE, UB, X;
+   COVMAT( ASSET, ASSET): V;
+   POINTS: XRET, YVAR;
+ENDSETS
+
+DATA:
+! Number of points on the 
+   efficient frontier graph;
+  NPOINTS = 10;
+  POINTS = 1..NPOINTS;
+! The stocks;
+  ASSET = GOOGLE, YAHOO, CISCO;
+! Expected growth rate of each asset;
+  RATE = 1.3   1.2  1.08;
+! Upper bound on investment in each;
+  UB   = .75   .75   .75;
+! Covariance matrix;
+  V    =   3     1   -.5
+           1     2   -.4
+         -.5   -.4     1;
+ENDDATA
+
+! Below are the three objectives we'll use;
+SUBMODEL SUB_RET_MAX:
+   [OBJ_RET_MAX] MAX = RETURN;
+ENDSUBMODEL
+
+SUBMODEL SUB_RET_MIN:
+   [OBJ_RET_MIN] MIN = RETURN;
+ENDSUBMODEL
+
+SUBMODEL SUB_MIN_VAR:
+   [OBJ_MIN_VAR] MIN = 
+    @SUM( COVMAT( I, J): V( I, J) * X( I) * X( J));
+ENDSUBMODEL
+
+!and the constraints;
+SUBMODEL SUB_CONSTRAINTS:
+   ! Compute return;
+   RETURN = @SUM( ASSET: RATE * X);
+   ! Must be fully invested;
+   @SUM( ASSET: X) = 1;
+   ! Upper bounds on each;
+   @FOR( ASSET: @BND( 0, X, UB));
+   ! Must achieve target return;
+   RETURN >= RET_LIM;
+ENDSUBMODEL
+
+CALC:
+! Set some parameters;
+   ! Reset all params;
+   @SET( 'DEFAULT');
+   ! Output error messages only;
+   @SET( 'TERSEO', 2);
+   ! Suppress status window;
+   @SET( 'STAWIN', 0);
+
+! Solve to get maximum return;
+   RET_LIM = 0;
+   @SOLVE( SUB_RET_MAX, SUB_CONSTRAINTS);
+
+! Save maximum return;
+   RET_MAX = OBJ_RET_MAX;
+
+! Solve to get minimum return;
+   @SOLVE( SUB_RET_MIN, SUB_CONSTRAINTS);
+
+! Save minimum return;
+   RET_MIN = OBJ_RET_MIN;
+
+! Interval between return points;
+   INTERVAL = 
+    ( RET_MAX - RET_MIN) / ( NPOINTS-1);
+
+! Loop over range of possible returns, 
+  minimizing variance;
+   RET_LIM = RET_MIN;
+   @FOR( POINTS( I):
+      @SOLVE( SUB_MIN_VAR, SUB_CONSTRAINTS);
+      XRET( I) = RET_LIM;
+      YVAR( I) = OBJ_MIN_VAR;
+      RET_LIM = RET_LIM + INTERVAL;
+   );
+
+! Display the results;
+   @WRITE( '     Return     Variance', @NEWLINE( 1));
+   @FOR( POINTS: @WRITE( @FORMAT( XRET, '#12.6G'), 
+    @FORMAT( YVAR, '#12.6G'), @NEWLINE( 1))
+   );
+ENDCALC
+
+CALC:
+
+! The remainder of the model graphs the efficient frontier;
+
+   NHASHY = 20;
+   NHASHX = 60;
+   SCALE = 10;
+
+   V0 = @FLOOR( YVAR( 1) * SCALE);
+   V0 = V0 / SCALE;
+   V1 = @FLOOR( YVAR( NPOINTS) * SCALE + .5);
+   V1 = V1 / SCALE;
+
+   R0 = @FLOOR( RET_MIN * SCALE);
+   R0 = R0 / SCALE;
+   R1 = @FLOOR( RET_MAX * SCALE + .5);
+   R1 = R1 / SCALE;
+
+ENDCALC
+
+SETS:
+   HASHX /1..NHASHX/: XAXIS;
+   HASHY /1..NHASHY/: YAXIS;
+   GRID( HASHY, HASHX): CHECK;
+ENDSETS
+
+CALC:
+   XWIDTH = ( R1 - R0) / NHASHX;
+   XAXIS( 1) = R0 + XWIDTH;
+   XAXIS( NHASHX) = R1;
+
+   YHEIGHT = ( V1 - V0) / NHASHY;
+   YAXIS( 1) = V0 + YHEIGHT;
+   YAXIS( NHASHY) = V1;
+
+   @FOR( HASHY( J) | J #GT# 1 #AND# J #LT# NHASHY:
+      YAXIS( J) = YAXIS( J - 1) + YHEIGHT;
+   );
+   @FOR( HASHX( J) | J #GT# 1 #AND# J #LT# NHASHX:
+      XAXIS( J) = XAXIS( J - 1) + XWIDTH;
+   );
+
+   @FOR( GRID: CHECK = 0);
+
+   @FOR( POINTS( P):
+      J = 1;
+      @WHILE( XRET( P) #GT# XAXIS( J): J = J + 1);
+      I = 1;
+      @WHILE( YVAR( P) #GT# YAXIS( I): I = I + 1);
+      CHECK( I, J) = 1;
+   );
+
+   INDENT = 12;
+   @WRITE( @NEWLINE( 2), (INDENT-3)*' ', 'Variance', @NEWLINE( 1));
+   @WRITE( INDENT*' ', '^', @NEWLINE( 1));
+
+   @FOR( HASHY( II): 
+      @IFC( II #EQ# 1: 
+         @WRITE( ( INDENT - 5) * ' ', @FORMAT( V1, '#4.2G'), ' |');
+      @ELSE 
+         @IFC( II #EQ# @SIZE( HASHY):
+            @WRITE( ( INDENT - 5) * ' ', @FORMAT( V0, '#4.2G'), ' |');
+         @ELSE
+            @WRITE( INDENT*' ', '|');
+         );
+      );
+      @FOR( HASHX( JJ):
+         @IFC( CHECK( @SIZE( HASHY) - II + 1, JJ):
+            @WRITE( '*');
+         @ELSE
+            @WRITE( ' ');
+         );
+      );
+      @WRITE( @NEWLINE( 1));
+   );
+
+   @WRITE( INDENT*' ', NHASHX*'-', '>', @NEWLINE( 1));
+   @WRITE( (INDENT-2)*' ', @FORMAT( R0, '4.2G'), ( NHASHX - 4)*' ', R1, @NEWLINE( 1));
+   @WRITE( ( INDENT + NHASHX - 3)*' ',  'Return', @NEWLINE( 3));
+
+ENDCALC
+
+END

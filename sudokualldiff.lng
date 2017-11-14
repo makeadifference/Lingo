@@ -1,0 +1,114 @@
+model:
+
+! The sudoku puzzle in LINGO (also spelled soduku some places).
+ Fill out a 9x9 grid with the digits
+ 1,2,...9, so that each digit appears once in
+   a) each column,
+   b) each row,
+   c) each of the nine 3x3 subsquares,
+   d) the main diagonal,
+   e) in the reflected diagonal;
+! Some versions of the puzzle do not require (d) and (e)
+! Keywords: sudoku, soduku, Puzzles;
+
+ sets:
+   side;
+   sxs( side, side): y;
+ endsets
+
+ data:
+   side = 1..9; ! sides of our Sudoku square;
+ enddata
+
+! Any pre-specified entries inserted here;
+   y(1,1) = 3;
+   y(1,3) = 4;
+   y(1,8) = 8;
+   y(2,2) = 9;
+   y(2,3) = 1;
+   y(2,4) = 7;
+   y(2,6) = 3;
+   y(2,8) = 5;
+   y(2,9) = 4;
+   y(3,2) = 6;
+   y(3,4) = 9;
+   y(3,7) = 2;
+   y(4,3) = 2;
+   y(4,4) = 8;
+   y(4,7) = 4;
+   y(5,2) = 4;
+   y(5,4) = 6;
+   y(5,5) = 7;
+   y(5,6) = 1;
+   y(5,8) = 2;
+   y(6,2) = 3;
+   y(7,2) = 7;
+   y(7,3) = 6;
+   y(7,9) = 2;
+   y(8,1) = 5;
+   y(8,9) = 6;
+   y(9,4) = 5;
+   y(9,8) = 1;
+
+! Each entry is in the interval [1, 9];
+@for( sxs(i,j):
+  @bnd( 1, y(i,j), 9);
+    );
+ 
+! For each row i, the entries must be all different integers;
+ @for( side( i):
+   @for( side(j):
+      @alldiff( 'row'+side(i), y(i,j));
+       );
+     );
+
+! For each col j, the entries must be all different;
+ @for( side( j):
+   @for( side(i):
+      @alldiff( 'col'+side(j), y(i,j));
+       );
+     );
+
+! For each subblock, the entries must be all different;
+ @for( sxs(i1,j1) | @mod(i1,3) #eq# 1 #and# @mod(j1,3) #eq# 1:
+   @for( sxs(i,j) | i1 #le# i #and# i #le# i1+2 
+                #and# j1 #le# j #and# j #le# j1+2:
+   @alldiff( 'blk'+side(i1)+side(j1), y(i,j));
+       );
+     );
+
+procedure hline( nlines):
+
+  k = 0;
+  @while( k #lt# nlines:
+     @write( 4*' ', 37*'.', @newline( 1));
+     k = k + 1;
+  );
+
+endprocedure
+
+calc:
+
+   ! Reduce output level;
+   @set( 'terseo', 1);
+
+   ! Solve the model;
+   @solve();
+
+   ! Display the solved puzzle;
+   @write( @newline( 1), 4*' ', 'Sudoku Puzzle Solution:', @newline( 1));
+   hline( 1);
+   @for( side( i):
+      @write( '    .');
+      @for( side( j):
+         @write( @format( '3g', y( i, j)));
+         @ifc( #not# @mod( j, 3): @write( '  .'));
+      );
+      @write( @newline( 1));
+      @ifc( #not# @mod( i, 3): hline( 1));
+   );
+
+   @write( @newline( 3));
+
+endcalc
+end

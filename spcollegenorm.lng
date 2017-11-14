@@ -1,0 +1,103 @@
+MODEL:  !See Birge and Louveaux (1997);
+
+! Core Model -------------------------------------------+;
+
+SETS:
+   TIME;
+   ASSETS: MU, SIGMA;
+   AXT( ASSETS, TIME): INVEST, RETURN;
+   AXA( ASSETS, ASSETS) | &2 #GT# &1: RHO;
+ENDSETS
+
+DATA:
+   INITIAL = 55;
+   GOAL = 80;
+   PENALTY = 4;
+   TIME = T0..T3;
+   ASSETS,   MU,  SIGMA = 
+    BONDS   1.12   .01
+    STOCKS  1.16   .10;
+   RHO = .5;
+ENDDATA
+
+MIN = PENALTY * UNDER - OVER;
+
+@FOR( TIME( T) | T #GT# 1:
+  @SUM( ASSETS( A): RETURN( A, T) * INVEST( A, T - 1)) =
+   @SUM( ASSETS( A): INVEST( A, T))
+);
+
+FINAL = @SUM( ASSETS( A): INVEST( A, @SIZE( TIME)));
+FINAL = GOAL + OVER - UNDER;
+
+@SUM( ASSETS( A): INVEST( A, @INDEX( TIME, T0))) = INITIAL;
+
+@FOR( ASSETS( A):
+   RETURN( A, @INDEX( TIME, T0)) = 0;
+);
+
+! SP Related Declarations -----------------------------+;
+
+! The initial decision and recourse variables;
+@FOR( AXT( A, T): 
+   @SPSTGVAR( T - 1, INVEST( A, T));
+);
+
+@FOR( AXT( A, T) | T #GT# 1:
+
+! Return is a random variable...;
+   @SPSTGRNDV( T - 1, RETURN( A, T));
+! ...and it's normally distributed;
+   @SPDISTNORM( MU( A), SIGMA( A), RETURN( A, T))
+);
+
+@FOR( TIME( T)| T #GT# @INDEX( TIME, T0):
+   !Set a sample size for each period;
+   @SPSAMPSIZE( T-1, 8);
+   
+   !Load the stock and bond correlation for the period;
+   @FOR( AXA( I, J):
+      @SPCORRKENDALL( RETURN( I, T), RETURN( J, T), RHO( I, J))
+   );
+);
+
+CALC:
+   @SET( 'TERSEO', 1);
+   @SOLVE();
+   I = 1;
+   NOVER = 0;
+   NUNDER = 0;
+   @WRITE( '                  Surplus     ');
+   @FOR( TIME( T) | T #GT# @INDEX( T0): @WRITE( '              ', TIME( T)));
+   @WRITE( @NEWLINE( 1));
+   @WRITE( '   Scenario        Return      Prob');
+   @FOR( TIME( T) | T #GT# @INDEX( T0): @WRITE( '    Bond   Stock'));
+   @WRITE( @NEWLINE( 1));
+   X_SURPLUS = 0;
+   @WHILE( I #LE# @SPNUMSCENE():
+      @SPLOADSCENE( I);
+      @WRITE( @FORMAT( I, '10.0f'), @FORMAT( OVER - UNDER, '15.3f'), 
+         @FORMAT( @SPPRBSCENE( I), '10.3f')
+      );
+      @FOR( TIME( T) | T #GT# @INDEX( T0): @FOR( ASSETS( A): @WRITE( '   ', 
+         @FORMAT( 100*(RETURN( A, T) - 1), '4.1f'), '%')));
+      @WRITE( @NEWLINE( 1));
+      X_SURPLUS = X_SURPLUS + @SPPRBSCENE( I) * ( OVER - UNDER);
+      I = I + 1;
+      @IFC( UNDER #LE# 1.E-8:
+         NOVER = NOVER + 1;
+      @ELSE
+         NUNDER = NUNDER + 1;
+      );
+   );
+   @WRITE( @NEWLINE( 1));
+   @WRITE( '  Expected surplus: ', @FORMAT( X_SURPLUS, '15.3f')); 
+   @WRITE( @NEWLINE( 1));
+   @WRITE( '  Scenarios over goal: ', @FORMAT( NOVER, '12g')); 
+   @WRITE( @NEWLINE( 1));
+   @WRITE( '  Scenarios under goal: ', @FORMAT( NUNDER, '11g')); 
+   @WRITE( @NEWLINE( 1));
+   @WRITE( '  Success ratio: ', @FORMAT( NOVER/(NOVER+NUNDER), '18.3f'));
+ENDCALC
+
+END

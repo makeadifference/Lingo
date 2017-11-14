@@ -1,0 +1,81 @@
+MODEL:
+! Data Envelopment Analysis of Decision Maker Efficiency ;
+! Keywords: DEA, Data Envelopment Analysis;
+SETS:
+  DMU: !The decisionmaking units;
+    SCORE; ! Each decision making unit has a
+               score to be computed;
+  FACTOR: TW;
+! There is a set of factors, input & output;
+  DXF( DMU, FACTOR):  F, ! F( I, J) = Jth factor of DMU I;
+         W;  ! Weights used to compute DMU I's score;
+ENDSETS
+
+DATA:
+  DMU = BL HW NT OP YK EL;
+! Inputs are spending/pupil, % not low income;
+! Outputs are Writing score and Science score;
+  NINPUTS = 2;  ! The first NINPUTS factors are inputs;
+ FACTOR= COST RICH     WRIT SCIN;
+!      The inputs,    the outputs;
+  F  =  89.39  64.3     25.2   223
+        86.25  99       28.2   287
+       108.13  99.6     29.4   317
+       106.38  96       26.4   291
+        62.40  96.2     27.2   295
+        47.19  79.9     25.5   222;
+  WGTMIN = .0005; ! Min weight applied to every factor;
+  BIGM = 999999;  ! Biggest a weight can be;
+ENDDATA
+!----------------------------------------------------------;
+
+! The Model;
+
+! IU = DMU we are currently considering;
+! Try to make the score of DMU IU as high as possible;
+  MAX = TSCORE;
+    TSCORE = @SUM( FACTOR(J)|J #GT# NINPUTS:
+                          F(INOW, J)* TW( J));
+
+! Sum of inputs(denominator) = 1;
+   [SUM21] @SUM( FACTOR( J)| J #LE# NINPUTS: F( INOW, J)* TW( J)) = 1;
+
+! Using DMU IU's weights, no DMU can score better than 1
+  Note, Numer/Denom <= 1 implies Numer <= Denom;
+   @FOR( DMU( K):
+      [LE1] @SUM( FACTOR( J)| J #GT# NINPUTS: F( K, J) * TW( J))
+      <= @SUM( FACTOR( J)| J #LE# NINPUTS: F( K, J) * TW( J))
+   );
+
+! The weights must be greater than zero;
+  @FOR( FACTOR( J): @BND( WGTMIN, TW, BIGM));
+
+CALC:
+   @SET( 'TERSEO', 2);  !Minimal output;
+
+   ! Solve the DEA model for every DMU;
+   @FOR( DMU( IU):
+      INOW = IU;
+      @SOLVE();
+     ! Store the results;
+      SCORE( IU) = TSCORE;
+      @FOR( FACTOR( J):
+         W(IU,J) = TW( J)
+      );
+   );
+
+   !Write out a solution report;
+   @WRITE( @NEWLINE( 2),
+      32*' ','Factor Weight:', @NEWLINE( 1),
+      '     DMU    Score', @WRITEFOR( FACTOR( I): '       ', 
+      FACTOR( I)), @NEWLINE( 1)
+   );
+   @WRITEFOR( DMU( D):  '      ', DMU( D), '   ',
+      @FORMAT( SCORE( D), '6.3f'), '   ', 
+      @WRITEFOR( FACTOR( I): 
+         @FORMAT( W( D, I), '8.4f'), '   '
+      ), @NEWLINE( 1)
+   );
+ENDCALC
+
+END

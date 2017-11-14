@@ -1,0 +1,67 @@
+MODEL:
+! Learning curve model;
+  ! Assuming that each time the number produced 
+    doubles, the cost per unit decreases by a 
+    constant rate, predict COST per unit with 
+    the equation:
+    COST(i) = A * VOLUME(i) ^ B;
+ SETS:
+  ! The OBS set contains the data for COST 
+    and VOLUME;
+  OBS/1..4/:
+     COST,   ! The dependent variable;
+     VOLUME; ! The independent variable;
+  ! The OUT set contains the outputs of the model.
+    Note: R will contain the output results.;
+  OUT/ A, B, RATE, RSQRU, RSQRA/: R;
+ ENDSETS
+  ! Data on hours per ton, cumulative tons for a
+    papermill based on Balof, J. Ind. Eng., 
+    Jan. 1966;
+ DATA:
+  COST = .1666,  .1428,  .1250,  .1111;
+  VOLUME = 8,     60,     100     190;
+ ENDDATA
+
+! The model;
+ SETS:
+  ! The derived set OBSN contains the set of 
+    logarithms of our dependent and independent
+    variables as well the mean shifted values;
+  OBSN( OBS): LX, LY, XS, YS;
+ ENDSETS
+ NK = @SIZE( OBS);
+  ! Take the logs;
+   @FOR( OBSN( I):
+     LX( I) = @LOG( VOLUME( I));
+     LY( I) = @LOG( COST( I)); );
+  ! Compute means;
+ XBAR = @SUM( OBSN: LX)/ NK;
+ YBAR = @SUM( OBSN: LY)/ NK;
+  ! Shift the observations by their means;
+ @FOR( OBSN:
+   XS = LX - XBAR;
+   YS = LY - YBAR);
+  ! Compute various sums of squares;
+ XYBAR = @SUM( OBSN: XS * YS);
+ XXBAR = @SUM( OBSN: XS * XS);
+ YYBAR = @SUM( OBSN: YS * YS);
+  ! Finally, the regression equation;
+ SLOPE = XYBAR/ XXBAR;
+ CONS = YBAR - SLOPE * XBAR;
+ RESID = @SUM( OBSN: ( YS - SLOPE * XS)^2);
+  ! The unadjusted/adjusted fraction of variance
+    explained;
+ [X1]R( @INDEX( RSQRU)) = 1 - RESID/ YYBAR;
+ [X2]R( @INDEX( RSQRA)) =  1 -  ( RESID/ YYBAR) * 
+  ( NK - 1)/( NK - 2);
+ [X3]R( @INDEX( A)) = @EXP( CONS);
+ [X4]R( @INDEX( B)) = - SLOPE;
+ [X5]R( @INDEX( RATE)) = 2 ^ SLOPE;
+
+ ! Some variables must be unconstrained in sign;
+ @FOR( OBSN: @FREE( LY); @FREE( XS); @FREE( YS));
+ @FREE( YBAR); @FREE( XBAR); @FREE( SLOPE);
+ @FREE( XYBAR); @FREE( CONS);
+
+END

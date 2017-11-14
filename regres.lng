@@ -1,0 +1,69 @@
+MODEL:
+! Linear Regression with one independent variable;
+! Linear regression is a forecasting method that 
+  models the relationship between a dependent 
+  variable to one or more independent variable. For
+  this model we wish to predict Y with the equation:
+     Y(i) = CONS + SLOPE * X(i);
+
+ SETS:
+    ! The OBS set contains the data points for 
+      X and Y;
+     OBS/1..11/:
+      Y, ! The dependent variable (annual road 
+           casualties);
+      X; ! The independent or explanatory variable 
+           (annual licensed vehicles;
+    ! The OUT set contains the output of the model.;
+     OUT/ CONS, SLOPE, RSQRU, RSQRA/: R;
+ ENDSETS
+
+ ! Our data on yearly road casualties vs. licensed
+   vehicles, was taken from Johnston, Econometric 
+   Methods;
+ DATA:
+  Y = 166 153 177 201 216 208 227 238 268 268 274;
+  X = 352 373 411 441 462 490 529 577 641 692 743;
+ ENDDATA
+
+ SETS:
+    ! The derived set OBS contains the mean shifted
+      values of the independent and dependent 
+      variables;
+     OBSN( OBS): XS, YS;
+ ENDSETS
+
+! Number of observations;
+ NK = @SIZE( OBS);
+
+! Compute means;
+ XBAR = @SUM( OBS: X)/ NK;
+ YBAR = @SUM( OBS: Y)/ NK;
+
+! Shift the observations by their means;
+ @FOR( OBS( I):
+ XS( I) = X( I) - XBAR;
+ YS( I) = Y( I) - YBAR);
+
+! Compute various sums of squares;
+ XYBAR = @SUM( OBSN: XS * YS);
+ XXBAR = @SUM( OBSN: XS * XS);
+ YYBAR = @SUM( OBSN: YS * YS);
+
+! Finally, the regression equation;
+ R( @INDEX( SLOPE)) = XYBAR/ XXBAR;
+ R( @INDEX( CONS)) = YBAR - R( @INDEX( SLOPE))
+  * XBAR;
+ RESID = @SUM( OBSN: ( YS - R( @INDEX( SLOPE))
+  * XS)^2);
+! A measure of how well X can be used to predict Y -
+  the unadjusted (RSQRU) and adjusted (RSQRA) 
+  fractions of variance explained;
+ R( @INDEX( RSQRU)) = 1 - RESID/ YYBAR;
+ R( @INDEX( RSQRA)) = 1 - ( RESID/ YYBAR) * 
+  ( NK - 1)/( NK - 2);
+
+! XS and YS may take on negative values;
+ @FOR( OBSN: @FREE( XS); @FREE( YS));
+
+END

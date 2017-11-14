@@ -1,0 +1,38 @@
+MODEL:
+ ! One machine job selection;
+ SETS:
+
+ ! There are six jobs each of which has a Due Date,
+   Processing Time, Value, and a flag variable Y 
+   indicating if the job has been selected.;
+  JOB/1..6/: ! Each job has a...;
+   DD,  ! Due date;
+   PT,  ! Processing time;
+   VAL, ! Value if job is selected;
+   Y;   ! = 1 if job is selected, else 0;
+ ENDSETS
+
+ DATA:
+  VAL = 9  2  4  2  4  6;
+  DD =  9  3  6  5  7  2;
+  PT =  5  2  4  3  1  2;
+ ENDDATA
+
+  ! Maximize the total value of the jobs taken;
+  MAX = TVAL;
+  TVAL = @SUM( JOB: VAL * Y);
+
+  ! For the jobs we do, we do in due date order;
+  @FOR( JOB( J):
+
+    ! Only jobs with earlier due dates can 
+      precede job J, and jobs must be completed 
+      by their due dates;
+    @SUM( JOB( I)| DD( I) #LT# DD( J) #OR#
+     (  DD( I) #EQ# DD( J) #AND# I #LE# J):
+      PT( I) * Y( I)) <= DD( J);
+
+   ! Make the Y's binary;
+    @BIN( Y);
+  );
+END

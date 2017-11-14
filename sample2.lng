@@ -1,0 +1,51 @@
+MODEL:
+! Stratified sampling plan design, taken from 
+  Bracken and McCormick. Minimize the cost of 
+  sampling from 4 strata, subject to constraints on
+  the variances of the sample based estimates of two
+  categories;
+ SETS:
+  STRATUM/1..4/: SIZE, POP, COST, WEIGHT;
+  CATEGORY/1..2/: VARMAX, K2;
+  SXC( STRATUM, CATEGORY): VAR, K1;
+ ENDSETS
+! POP = population of each stratum.
+  COST = cost of sampling in each.
+  VARMAX = variance limits.
+  VAR = variance for each category in each stratum.
+  CFIX = a fixed cost;
+ DATA:
+  POP = 400000, 300000, 200000, 100000;
+  COST =     1,      1,      1,      1;
+  VARMAX = .043, .014;
+  VAR  =    25    1
+            25    4
+            25    16
+            25    64;
+  CFIX = 1;
+ ENDDATA
+ [OBJ] MIN = CFIX + @SUM( STRATUM: SIZE * COST);
+! Compute some parameters;
+ TOTP =  @SUM( STRATUM( I): POP( I));
+ @FOR( STRATUM( I):
+! Weight given each stratum;
+  WEIGHT( I) = POP( I)/TOTP;
+  @GIN( SIZE( I));
+ );
+ @FOR( CATEGORY( J):
+  K2( J) =
+   @SUM( STRATUM(I): VAR( I, J)^2 * 
+    WEIGHT( I)/ POP( I));
+ );
+ @FOR( SXC( I, J):
+  K1( I, J) =  VAR( I, J)^2* WEIGHT( I)^2;
+ );
+ @FOR( CATEGORY( J):
+  @SUM( STRATUM( I): K1( I, J) / SIZE( I))
+   - K2( J) <= VARMAX( J)
+ );
+ @FOR( STRATUM( I): 
+  @BND( 0.0001, SIZE(I), POP( I) -1);
+ );
+
+END

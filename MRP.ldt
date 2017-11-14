@@ -1,0 +1,41 @@
+! Parts list;
+   U, ! Unicycles;
+   B, ! Bicycles;
+   T, ! Tandems;
+   S, ! Seats;
+   W, ! Wheels;
+   C, ! Chains;
+   H, ! Hubs;
+   P, ! sPokes;
+   L~ ! Links;
+
+!  The set of periods;
+   1..9 ~
+
+! The parent-child use relationships; 
+! (i.e., Unicycles  use Seats, etc.);
+U S, U W, B S, B W, B C, T S, T W, 
+T C, W H, W P, C L ~
+
+! The number of child parts required; 
+! in each parent- child relationship,; 
+!  respectively (i.e, Unicycles use 1; 
+!  Seat, Wheels use 36 sPokes, etc.);
+1, 1, 1, 2, 1, 2, 2, 2, 1, 36, 84~ 
+
+! The lead times for each part;
+   1, 2, 1, 1, 3, 1, 1, 2, 2~
+
+! The external demands or master schedule;
+! Time period;
+!         1  2  3  4  5  6  7  8  9;
+   ! U;   0, 0, 0, 0, 0, 0, 0,10, 0,
+   ! B;   0, 0, 0, 0, 0, 0, 0, 0,20,
+   ! T;   0, 0, 0, 0, 0, 0, 0, 0,20,
+   ! S;   0, 0, 0, 0, 0, 0, 0, 0, 0,
+   ! W;   0, 0, 0, 0, 0, 0, 0, 0, 0,
+   ! C;   0, 0, 0, 0, 0, 0, 0, 0, 0,
+   ! H;   0, 0, 0, 0, 0, 0, 0, 0, 0,
+   ! P;   0, 0, 0, 0, 0, 0, 0, 0, 0,
+   ! L;   0, 0, 0, 0, 0, 0, 0, 0, 0
+

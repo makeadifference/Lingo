@@ -1,0 +1,38 @@
+MODEL:
+
+DATA:
+  TRIALS = 1000; 
+  NUMBER_SELECTION = 10;
+  SEED = .3;
+ENDDATA
+
+CALC:
+  @SET( 'TERSEO', 2);
+  I = 0;
+  NWON = 0;
+  NHITS = 0;
+  NLOST = 0;
+  @WHILE( I #LT# TRIALS:
+    I = I + 1;
+    RND = @RAND( SEED);
+    SEED = RND;
+    NEW_NUMBER = @FLOOR( 36.999 * RND);
+    !@WRITE( 'Trial: ', i, ' Roulette Spin: ', NEW_NUMBER, @NEWLINE( 1));
+    @IFC( NEW_NUMBER #EQ# NUMBER_SELECTION:
+       NWON = NWON + 36;
+       NHITS = NHITS + 1;
+    @ELSE
+       NLOST = NLOST + 1;
+    );
+  );
+
+  @WRITE( @NEWLINE( 1),
+     'Total Trials: ', TRIALS, @NEWLINE( 1),
+     'Trials Won  : ', NHITS, @NEWLINE( 2),
+     'Dollars Won : $', NWON, @NEWLINE( 1),
+     'Dollars Lost: $', NLOST, @NEWLINE( 1),
+     'Net Win     : $', NWON - NLOST, @NEWLINE( 2)
+  );
+ENDCALC
+
+END

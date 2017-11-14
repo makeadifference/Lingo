@@ -1,0 +1,31 @@
+MODEL:
+! GENPRT: Generic Markowitz portfolio;
+ SETS:
+  ASSET/1..3/: RATE, UB, X;
+  COVMAT( ASSET, ASSET): V;
+ ENDSETS
+ DATA:
+! The data;
+!  Expected growth rate of each asset;
+  RATE = 1.3   1.2  1.08;
+!  Upper bound on investment in each;
+  UB   = .75   .75   .75;
+!  Covariance matrix;
+  V    =   3     1   -.5
+           1     2   -.4
+         -.5   -.4     1;
+!  Desired growth rate of portfolio;
+  GROWTH = 1.12;
+ENDDATA
+
+! The model;
+! Min the variance;
+ [VAR] MIN = @SUM( COVMAT( I, J):
+              V( I, J) * X( I) * X( J));
+! Must be fully invested;
+ [FULL] @SUM( ASSET: X) = 1;
+! Upper bounds on each;
+ @FOR( ASSET: @BND( 0, X, UB));
+! Desired value or return after 1 period;
+ [RET] @SUM( ASSET: RATE * X) >= GROWTH;
+END

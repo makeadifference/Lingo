@@ -1,0 +1,66 @@
+MODEL:
+ SETS:
+  ! Dynamic programming illustration (see Anderson,
+    Sweeney & Williams, An Intro to Mgt Science,
+    6th Ed.). We have a network of 10 cities.  We
+    want to find the length of the shortest route
+    from city 1 to city 10.;
+  ! Here is our primitive set of ten cities, where
+    F( i) represents the shortest path distance
+    from city i to the last city;
+   CITIES /1..10/: F, CONPATH;
+  ! The derived set ROADS lists the roads that
+    exist between the cities (note: not all city
+    pairs are directly linked by a road, and roads
+    are assumed to be one way.);
+   ROADS( CITIES, CITIES)/
+    1,2  1,3  1,4
+    2,5  2,6  2,7
+    3,5  3,6  3,7
+    4,5  4,6
+    5,8  5,9
+    6,8  6,9
+    7,8  7,9
+    8,10     9,10/: D, RONPATH;
+  ! D( i, j) is the distance from city i to j;
+ ENDSETS
+ DATA:
+  ! Here are the distances that correspond to the
+    above links;
+   D =
+      1    5    2
+     13   12   11
+      6   10    4
+     12   14
+      3    9
+      6    5
+      8   10
+      5         2;
+ ENDDATA
+  ! If ou are already in last city, then the cost to
+    travel to it is 0;
+  F( @SIZE( CITIES)) = 0;
+  ! The following is the classic dynamic programming
+    recursion. In words, the shortest distance from
+    City i to last city is the minimum over all
+    cities j reachable from i of the sum of the
+    distance from i to j plus the minimal distance
+    from j to last city;
+  @FOR( CITIES( i)| i #LT# @SIZE( CITIES):
+   F( i) = @MIN( ROADS( i, j): D( i, j) + F( j));
+  );
+  ! Set CONPATH( j) > 0 if city j is on any critical path,
+    i.e., if going to j from some i on the critical path,
+    still allows us to get to last city in optimal time;
+  CONPATH( 1) = 1;
+  @FOR( CITIES( j)| j #GT# 1:
+   CONPATH( j) = @MAX( ROADS( i,j): CONPATH( i)*((F(I)-F( j) #EQ# D(i,j))));
+  );
+  ! Set RONPATH(i,j) = 1 if arc i,j is on any critical path,
+    i.e., both i and j are on path and (i,j) is shortest path
+    from i to j.  Note, we do not assume distances satisfy
+    triangle inequality;
+  @FOR( ROADS(i,j): RONPATH(I,J) = 
+   @SMIN( CONPATH(i), CONPATH(j))*((F(i)-F( j)) #EQ# D(i,j));
+  );
+END

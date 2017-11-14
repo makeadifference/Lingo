@@ -1,0 +1,36 @@
+MODEL:
+
+SETS:
+   PERIODS /1..8/: OBSERVED, ERROR, PREDICT;
+ENDSETS
+
+DATA:
+
+! The degree of the objective. N may be changed
+   to 1 to minimize absolute deviation;
+   N = 2;
+
+! The observed values of the time series;
+   OBSERVED = 10 14 12 19 14 21 19 26;
+
+ENDDATA
+! Force Period 1 prediction to 10;
+  PREDICT( 1) = 10;
+! The objective function;
+   [OBJ] MIN= @SUM( PERIODS: @ABS( ERROR) ^ N);
+
+! Calculate the forecasts;
+   @FOR( PERIODS( T) | T #GT# 1:
+    PREDICT( T) = ALPHA * OBSERVED( T - 1) +
+    ( 1 - ALPHA) * PREDICT( T - 1));
+
+! Calculate forecast errors;
+   @FOR( PERIODS: ERROR = PREDICT - OBSERVED);
+
+! Error terms may be negative as well as positive;
+   @FOR( PERIODS: @FREE( ERROR));
+
+! Exclude meaningless Alphas of zero or one;
+    @BND(.01, ALPHA,.9999);
+
+END

@@ -1,0 +1,13 @@
+MODEL:
+
+!Here is the total profit objective function;
+MAX=100*standard+150*turbo;
+
+!Constraints on the production line capacity;
+standard<=100;
+turbo<=120;
+
+!Our labor supply is limited;
+standard+2*turbo<=160;
+
+END

@@ -1,0 +1,97 @@
+MODEL:
+SETS:
+
+! Binomial option pricing model: We assume that
+a stock can either go up in value from one period
+to the next with probability PUP, or down with
+probability (1 - PUP).  Under this assumption,
+a stock's return will be binomially distributed.
+In addition, the symmetric probabilities allow
+us to build a dynamic programming recursion to
+determine the option's value;
+
+! No. of periods, e.g., weeks;
+   PERIOD /1..20/:;
+
+ENDSETS
+
+DATA:
+
+! Current price of the stock;
+   PNOW   = 40.75;
+
+! Exercise price at option expiration;
+   STRIKE = 40;
+
+! Yearly interest rate;
+   IRATE  = .163;
+
+! Weekly variance in log of price;
+   WVAR   = .005216191 ;
+
+ENDDATA
+
+SETS:
+
+! Generate our state matrix for the DP.  
+  STATE( S, T) may be entered from STATE( S, T - 1)
+  if stock lost value, or it may be entered from 
+  STATE( S - 1, T - 1) if stock gained;
+   STATE( PERIOD, PERIOD)| &1 #LE# &2:
+      PRICE,   ! There is a stock price, and...;
+      VAL;     ! a value of the option;
+
+ENDSETS
+
+! Compute number of periods;
+   LASTP = @SIZE( PERIOD);
+
+! Get the weekly interest rate;
+   ( 1 + WRATE) ^ 52 = ( 1 + IRATE);
+
+! The weekly discount factor;
+   DISF = 1/( 1 + WRATE);
+
+! Use the fact that if LOG( P) is normal with
+  mean LOGM and variance WVAR, then P has
+  mean EXP( LOGM + WVAR/2), solving for LOGM...;
+   LOGM = @LOG( 1 + WRATE) - WVAR/ 2;
+
+! Get the log of the up factor;
+   LUPF = ( LOGM * LOGM + WVAR) ^ .5;
+
+! The actual up move factor;
+   UPF = @EXP( LUPF);
+
+! and the down move factor;
+   DNF = 1/ UPF;
+
+! Probability of an up move;
+   PUP =  .5 * ( 1 + LOGM/ LUPF);
+
+! Initialize the price table;
+   PRICE( 1, 1) = PNOW;
+
+! First the states where it goes down every period;
+   @FOR( PERIOD( T) | T #GT# 1:
+    PRICE( 1, T) = PRICE( 1, T - 1) * DNF);
+
+! Now compute for all other states S, period T;
+   @FOR( STATE( S, T)| T #GT# 1 #AND# S #GT# 1:
+    PRICE( S, T) = PRICE( S - 1, T - 1) * UPF);
+
+! Set values in the final period;
+   @FOR( PERIOD( S):
+    VAL( S, LASTP) = 
+     @SMAX( PRICE( S, LASTP) - STRIKE, 0));
+
+! Do the dynamic programing;
+   @FOR( STATE( S, T) | T #LT# LASTP:
+    VAL( S, T) = DISF * 
+     ( PUP * VAL( S + 1, T + 1) +
+      ( 1 - PUP) * VAL( S, T + 1)));
+
+! Finally, the value of the option now;
+   VALUE = VAL( 1, 1);
+
+END

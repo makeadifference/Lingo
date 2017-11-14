@@ -1,0 +1,45 @@
+MODEL:
+
+!A knapsack model that can be used to illustrate 
+ Lingo's K-Best feature, which allow one to find
+ the K-Best solutions to an integer model.  To 
+ generate the four best solutions to this model:
+
+ 1. Run the Lingo|Options command.
+ 2. Select the Integer Solver tab.
+ 3. Set the K-Best solutions option to 4.
+ 4. Solve the model.
+
+ ;
+
+SETS:
+   ITEMS: INCLUDE, WEIGHT, RATING;
+   MYFAVORITES( ITEMS);
+ENDSETS
+
+DATA:
+   KNAPSACK_CAPACITY = 15;
+
+   ITEMS      WEIGHT  RATING =
+     BRATS       3      1
+     BROWNIES    3      1
+     BEER        3      1
+     AND_REPEL   7      1
+     BLANKET     4      6
+     FRISBEE     1      6
+     SALAD       5     10
+     WATERMELON  7      9;
+
+   MYFAVORITES = BRATS BROWNIES BEER;
+ENDDATA
+
+MAX = @SUM( ITEMS: RATING * INCLUDE);
+
+@SUM( ITEMS: WEIGHT * INCLUDE) <= 
+ KNAPSACK_CAPACITY;
+
+@FOR( ITEMS: @BIN( INCLUDE));
+
+NUMFAVE = @SUM( MYFAVORITES: INCLUDE);
+
+END
